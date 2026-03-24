@@ -47,8 +47,8 @@ describe("parseQuery", () => {
   test("extracts mood hints", () => {
     const result = parseQuery("sad romantic songs");
     const moodKeys = result.filters.moods.map(m => m.key);
-    expect(moodKeys).toContain("sadness");
-    expect(moodKeys).toContain("romantic");
+    expect(moodKeys).toContain("sa");
+    expect(moodKeys).toContain("ro");
   });
 
   test("extracts audio features", () => {

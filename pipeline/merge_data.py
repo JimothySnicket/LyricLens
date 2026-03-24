@@ -147,17 +147,22 @@ def main() -> None:
                 "energy": float(meta["energy"]) if pd.notna(meta.get("energy")) else 0.0,
                 "danceability": float(meta["danceability"]) if pd.notna(meta.get("danceability")) else 0.0,
                 "acousticness": float(meta["acousticness"]) if pd.notna(meta.get("acousticness")) else 0.0,
-                # Lyric theme scores
-                "sadness": float(meta["sadness"]) if pd.notna(meta.get("sadness")) else 0.0,
-                "romantic": float(meta["romantic"]) if pd.notna(meta.get("romantic")) else 0.0,
-                "violence": float(meta["violence"]) if pd.notna(meta.get("violence")) else 0.0,
-                "dating": float(meta["dating"]) if pd.notna(meta.get("dating")) else 0.0,
-                "obscene": float(meta["obscene"]) if pd.notna(meta.get("obscene")) else 0.0,
-                "feelings": float(meta["feelings"]) if pd.notna(meta.get("feelings")) else 0.0,
-                "night_time": float(meta["night/time"]) if pd.notna(meta.get("night/time")) else 0.0,
-                "world_life": float(meta["world/life"]) if pd.notna(meta.get("world/life")) else 0.0,
-                "communication": float(meta["communication"]) if pd.notna(meta.get("communication")) else 0.0,
-                "music": float(meta["music"]) if pd.notna(meta.get("music")) else 0.0,
+                # Topic scores — abbreviated keys to keep data compact
+                # sa=sadness, ro=romantic, vi=intensity, da=dating,
+                # ob=mature, fe=feelings, nt=night/time, wl=world/life,
+                # co=communication, mu=music
+                "scores": {
+                    "sa": float(meta["sadness"]) if pd.notna(meta.get("sadness")) else 0.0,
+                    "ro": float(meta["romantic"]) if pd.notna(meta.get("romantic")) else 0.0,
+                    "vi": float(meta["violence"]) if pd.notna(meta.get("violence")) else 0.0,
+                    "da": float(meta["dating"]) if pd.notna(meta.get("dating")) else 0.0,
+                    "ob": float(meta["obscene"]) if pd.notna(meta.get("obscene")) else 0.0,
+                    "fe": float(meta["feelings"]) if pd.notna(meta.get("feelings")) else 0.0,
+                    "nt": float(meta["night/time"]) if pd.notna(meta.get("night/time")) else 0.0,
+                    "wl": float(meta["world/life"]) if pd.notna(meta.get("world/life")) else 0.0,
+                    "co": float(meta["communication"]) if pd.notna(meta.get("communication")) else 0.0,
+                    "mu": float(meta["music"]) if pd.notna(meta.get("music")) else 0.0,
+                },
             }
         else:
             # Lyrics but no metadata match — include with zeroed scores
@@ -176,18 +181,14 @@ def main() -> None:
                 "energy": 0.0,
                 "danceability": 0.0,
                 "acousticness": 0.0,
-                "sadness": 0.0,
-                "romantic": 0.0,
-                "violence": 0.0,
-                "dating": 0.0,
-                "obscene": 0.0,
-                "feelings": 0.0,
-                "night_time": 0.0,
-                "world_life": 0.0,
-                "communication": 0.0,
-                "music": 0.0,
+                "scores": {
+                    "sa": 0.0, "ro": 0.0, "vi": 0.0, "da": 0.0, "ob": 0.0,
+                    "fe": 0.0, "nt": 0.0, "wl": 0.0, "co": 0.0, "mu": 0.0,
+                },
             }
 
+        TOPIC_REMAP = {"violence": "intensity", "obscene": "mature"}
+        record["topic"] = TOPIC_REMAP.get(record["topic"], record["topic"])
         records.append(record)
 
     # Songs in hits but not in lyrics — just report, don't include

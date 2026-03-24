@@ -36,23 +36,24 @@ interface FeatureSpec {
   max?: number;
 }
 
+// Keys match the abbreviated score fields in Song.scores
 const MOOD_MAP: Record<string, FeatureSpec> = {
-  sad:         { key: "sadness",    label: "sadness",    min: 0.25 },
-  sadness:     { key: "sadness",    label: "sadness",    min: 0.25 },
-  heartbreak:  { key: "sadness",    label: "sadness",    min: 0.2  },
-  heartbroken: { key: "sadness",    label: "sadness",    min: 0.2  },
-  lonely:      { key: "sadness",    label: "sadness",    min: 0.2  },
-  melancholy:  { key: "sadness",    label: "sadness",    min: 0.2  },
-  romantic:    { key: "romantic",   label: "romantic",   min: 0.2  },
-  romance:     { key: "romantic",   label: "romantic",   min: 0.2  },
-  violent:     { key: "violence",   label: "violence",   min: 0.2  },
-  violence:    { key: "violence",   label: "violence",   min: 0.2  },
-  aggressive:  { key: "violence",   label: "violence",   min: 0.15 },
-  angry:       { key: "violence",   label: "violence",   min: 0.15 },
-  obscene:     { key: "obscene",    label: "obscene",    min: 0.2  },
-  explicit:    { key: "obscene",    label: "obscene",    min: 0.15 },
-  dark:        { key: "night_time", label: "night/time", min: 0.15 },
-  emotional:   { key: "feelings",   label: "feelings",   min: 0.15 },
+  sad:         { key: "sa", label: "sadness",    min: 0.25 },
+  sadness:     { key: "sa", label: "sadness",    min: 0.25 },
+  heartbreak:  { key: "sa", label: "sadness",    min: 0.2  },
+  heartbroken: { key: "sa", label: "sadness",    min: 0.2  },
+  lonely:      { key: "sa", label: "sadness",    min: 0.2  },
+  melancholy:  { key: "sa", label: "sadness",    min: 0.2  },
+  romantic:    { key: "ro", label: "romantic",   min: 0.2  },
+  romance:     { key: "ro", label: "romantic",   min: 0.2  },
+  intense:     { key: "vi", label: "intensity",  min: 0.2  },
+  intensity:   { key: "vi", label: "intensity",  min: 0.2  },
+  forceful:    { key: "vi", label: "intensity",  min: 0.15 },
+  heated:      { key: "vi", label: "intensity",  min: 0.15 },
+  mature:      { key: "ob", label: "mature",     min: 0.2  },
+  explicit_content: { key: "ob", label: "mature",     min: 0.15 },
+  dark:        { key: "nt", label: "night/time", min: 0.15 },
+  emotional:   { key: "fe", label: "feelings",   min: 0.15 },
 };
 
 const AUDIO_MAP: Record<string, FeatureSpec> = {
