@@ -8,10 +8,9 @@ export async function hybridSearch(
   originalQuery: string,
   limit = 20
 ): Promise<{ results: SearchResult[]; totalFiltered: number }> {
-  const queryText = parsed.semanticText || parsed.terms.join(" ") || originalQuery;
   const client = getQdrantClient();
 
-  // Build Qdrant filter conditions from all parsed filters
+  // Build Qdrant filter from ALL structured fields
   const must: any[] = [];
   if (parsed.filters.decades.length > 0) {
     must.push({ key: "decade", match: { any: parsed.filters.decades } });
@@ -19,19 +18,48 @@ export async function hybridSearch(
   if (parsed.filters.genres.length > 0) {
     must.push({ key: "genre", match: { any: parsed.filters.genres } });
   }
+  if (parsed.filters.artistHint.length > 0) {
+    must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
+  }
+  for (const mood of parsed.filters.moods) {
+    if (mood.min !== undefined) {
+      must.push({ key: mood.key, range: { gte: mood.min } });
+    }
+  }
+  for (const af of parsed.filters.audioFeatures) {
+    if (af.min !== undefined) must.push({ key: af.key, range: { gte: af.min } });
+    if (af.max !== undefined) must.push({ key: af.key, range: { lte: af.max } });
+  }
   const filter = must.length > 0 ? { must } : undefined;
 
   // Count filtered pool
   const countResult = filter
     ? await client.count(COLLECTION_NAME, { filter, exact: true })
-    : { count: 819 };
+    : { count: 723 };
 
-  // If there's no text to embed, just return the count
+  // semanticText always has content now
+  const queryText = parsed.semanticText || originalQuery;
+
   if (!queryText.trim()) {
-    return { results: [], totalFiltered: countResult.count };
+    // Pure filter query — scroll with filters, sort by chart position
+    if (!filter) return { results: [], totalFiltered: 723 };
+    const scrollResult = await client.scroll(COLLECTION_NAME, {
+      filter,
+      limit,
+      with_payload: true,
+    });
+    return {
+      results: scrollResult.points.map((point) => ({
+        song: payloadToSong(point.id, point.payload),
+        score: 0,
+        matchReason: buildMatchReason("hybrid", parsed, 0),
+        mode: "hybrid" as const,
+      })),
+      totalFiltered: countResult.count,
+    };
   }
 
-  // Fetch more results than needed so we can re-rank after blending
+  // Over-fetch for re-ranking
   const fetchLimit = Math.min(limit * 3, 60);
   const vector = await embedQuery(queryText);
 
@@ -42,7 +70,7 @@ export async function hybridSearch(
     with_payload: true,
   });
 
-  let results = response.points.map((point) => {
+  const results = response.points.map((point) => {
     const song = payloadToSong(point.id, point.payload);
     const vectorScore = point.score ?? 0;
 
@@ -50,7 +78,6 @@ export async function hybridSearch(
     let keywordBonus = 0;
     const reasons: string[] = [];
 
-    // Term matching bonus
     for (const term of parsed.terms) {
       if (song.title.toLowerCase().includes(term)) {
         keywordBonus += 0.05;
@@ -58,27 +85,6 @@ export async function hybridSearch(
       }
       if (song.lyrics.toLowerCase().includes(term)) {
         keywordBonus += 0.02;
-      }
-    }
-
-    // Mood score bonus
-    for (const mood of parsed.filters.moods) {
-      const val = song.scores[mood.key] ?? 0;
-      if (val >= (mood.min ?? 0)) {
-        keywordBonus += val * 0.03;
-        reasons.push(`${mood.label}: ${val.toFixed(2)}`);
-      }
-    }
-
-    // Audio feature bonus
-    for (const af of parsed.filters.audioFeatures) {
-      const audioKey = af.key as keyof typeof song;
-      const val = typeof song[audioKey] === "number" ? (song[audioKey] as number) : 0;
-      if (af.min !== undefined && val >= af.min) {
-        keywordBonus += val * 0.02;
-      }
-      if (af.max !== undefined && val <= af.max) {
-        keywordBonus += (1 - val) * 0.02;
       }
     }
 
@@ -94,15 +100,6 @@ export async function hybridSearch(
     };
   });
 
-  // Post-filter by artist hint
-  if (parsed.filters.artistHint.length > 0) {
-    results = results.filter((r) => {
-      const lower = r.song.artist.toLowerCase();
-      return parsed.filters.artistHint.every((t) => lower.includes(t));
-    });
-  }
-
-  // Re-sort by blended score
   results.sort((a, b) => b.score - a.score);
 
   return {

@@ -273,13 +273,19 @@ export function parseQuery(raw: string): ParsedQuery {
   }
 
   // -------------------------------------------------------------------------
-  // 7. Remaining tokens: filter stop words → terms & semanticText
+  // 7. Remaining tokens: filter stop words → terms (for keyword matching)
   // -------------------------------------------------------------------------
   const remaining = tokens.filter((t, i) => !consumed[i]);
   const meaningful = remaining.filter(t => !STOP_WORDS.has(t) && t.length > 1);
 
   result.terms = meaningful;
-  result.semanticText = meaningful.join(" ");
+
+  // semanticText = ALL meaningful words from the original query, not just
+  // unconsumed ones. A word can be both a filter trigger AND carry semantic
+  // meaning. "sad rock" should embed as "sad rock", not "".
+  const rawTokens = raw.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+  const allMeaningful = rawTokens.filter(t => !STOP_WORDS.has(t) && t.length > 1);
+  result.semanticText = allMeaningful.join(" ");
 
   return result;
 }

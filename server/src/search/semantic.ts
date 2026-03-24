@@ -8,16 +8,9 @@ export async function semanticSearch(
   originalQuery: string,
   limit = 20
 ): Promise<{ results: SearchResult[]; totalFiltered: number }> {
-  // Use semanticText if available, otherwise fall back to the original query.
-  // Semantic search should always embed something — even if the parser consumed
-  // all words as filters/moods, the original query still carries meaning.
-  const queryText = parsed.semanticText || parsed.terms.join(" ") || originalQuery;
-  if (!queryText.trim()) return { results: [], totalFiltered: 0 };
-
-  const vector = await embedQuery(queryText);
   const client = getQdrantClient();
 
-  // Apply all structured filters in semantic mode
+  // Build Qdrant filter from all structured fields
   const must: any[] = [];
   if (parsed.filters.decades.length > 0) {
     must.push({ key: "decade", match: { any: parsed.filters.decades } });
@@ -25,8 +18,44 @@ export async function semanticSearch(
   if (parsed.filters.genres.length > 0) {
     must.push({ key: "genre", match: { any: parsed.filters.genres } });
   }
-  // Artist filter — Qdrant doesn't support substring match, so we'll post-filter
+  if (parsed.filters.artistHint.length > 0) {
+    must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
+  }
+  // Mood/audio as range filters
+  for (const mood of parsed.filters.moods) {
+    if (mood.min !== undefined) {
+      must.push({ key: mood.key, range: { gte: mood.min } });
+    }
+  }
+  for (const af of parsed.filters.audioFeatures) {
+    if (af.min !== undefined) must.push({ key: af.key, range: { gte: af.min } });
+    if (af.max !== undefined) must.push({ key: af.key, range: { lte: af.max } });
+  }
   const filter = must.length > 0 ? { must } : undefined;
+
+  // semanticText always has content now (parser doesn't consume words)
+  const queryText = parsed.semanticText || originalQuery;
+
+  // If there's truly nothing to embed, just scroll with filters
+  if (!queryText.trim()) {
+    if (!filter) return { results: [], totalFiltered: 723 };
+    const scrollResult = await client.scroll(COLLECTION_NAME, {
+      filter,
+      limit,
+      with_payload: true,
+    });
+    return {
+      results: scrollResult.points.map((point) => ({
+        song: payloadToSong(point.id, point.payload),
+        score: 0,
+        matchReason: buildMatchReason("semantic", parsed, 0),
+        mode: "semantic" as const,
+      })),
+      totalFiltered: scrollResult.points.length,
+    };
+  }
+
+  const vector = await embedQuery(queryText);
 
   const countResult = filter
     ? await client.count(COLLECTION_NAME, { filter, exact: true })
@@ -39,20 +68,13 @@ export async function semanticSearch(
     with_payload: true,
   });
 
-  let results = response.points.map((point) => ({
-    song: payloadToSong(point.id, point.payload),
-    score: point.score ?? 0,
-    matchReason: buildMatchReason("semantic", parsed, point.score ?? 0),
-    mode: "semantic" as const,
-  }));
-
-  // Post-filter by artist hint (Qdrant doesn't support substring matching)
-  if (parsed.filters.artistHint.length > 0) {
-    results = results.filter((r) => {
-      const lower = r.song.artist.toLowerCase();
-      return parsed.filters.artistHint.every((t) => lower.includes(t));
-    });
-  }
-
-  return { results, totalFiltered: countResult.count };
+  return {
+    results: response.points.map((point) => ({
+      song: payloadToSong(point.id, point.payload),
+      score: point.score ?? 0,
+      matchReason: buildMatchReason("semantic", parsed, point.score ?? 0),
+      mode: "semantic" as const,
+    })),
+    totalFiltered: countResult.count,
+  };
 }
