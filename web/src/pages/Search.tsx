@@ -98,14 +98,14 @@ export function Search() {
   const hasQuery = query.length > 0;
 
   return (
-    <div className="py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
       {/* Hero + Search zone */}
       <section className="space-y-6">
         {!hasQuery && (
           <div className="text-center space-y-2 pb-2">
             <h1 className="text-3xl font-semibold text-(--color-text)">LyricLens</h1>
             <p className="text-(--color-text-secondary) text-base">
-              Search 5,000+ songs by keyword, meaning, or vibe.
+              Search 819 chart hits by keyword, meaning, or vibe.
             </p>
           </div>
         )}

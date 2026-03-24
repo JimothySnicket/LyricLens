@@ -5,9 +5,11 @@ import type { ParsedQuery, SearchResult } from "../lib/types";
 
 export async function hybridSearch(
   parsed: ParsedQuery,
+  originalQuery: string,
   limit = 20
 ): Promise<{ results: SearchResult[]; totalFiltered: number }> {
-  const queryText = parsed.semanticText || parsed.terms.join(" ");
+  // Fall back to original query if parser consumed all words
+  const queryText = parsed.semanticText || parsed.terms.join(" ") || originalQuery;
   const client = getQdrantClient();
 
   // Build Qdrant filter conditions from parsed query

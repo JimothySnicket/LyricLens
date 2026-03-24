@@ -1,3 +1,5 @@
+import { resolve } from "path";
+import { readFileSync, existsSync } from "fs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { searchRoutes } from "./routes/search";
@@ -5,6 +7,21 @@ import { filterRoutes } from "./routes/filters";
 import { statsRoutes } from "./routes/stats";
 import { vizRoutes } from "./routes/viz";
 import { ragRoutes } from "./routes/rag";
+
+// Load .env from project root (parent of server/)
+const envPath = resolve(import.meta.dir, "../../.env");
+if (existsSync(envPath)) {
+  const envContent = readFileSync(envPath, "utf-8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const val = trimmed.slice(eqIdx + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
 
 const app = new Hono();
 

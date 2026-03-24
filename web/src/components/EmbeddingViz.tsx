@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import Plotly from "plotly.js-basic-dist-min";
-import createPlotlyComponent from "react-plotly.js/factory";
+import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
 
-const Plot = createPlotlyComponent(Plotly as object);
+// Factory default export varies by bundler — handle both cases
+const createPlotlyComponent = typeof factory === "function" ? factory : (factory as any).default;
+const Plot = createPlotlyComponent(Plotly);
 
 type ColorBy = "genre" | "decade" | "topic" | "cluster";
 
@@ -117,26 +119,33 @@ export function EmbeddingViz({ points, colorBy, onSelect, selectedId }: Props) {
       plot_bgcolor: "transparent",
       scene: {
         bgcolor: "transparent",
+        camera: {
+          eye: { x: 1.5, y: 1.5, z: 1.2 },
+          up: { x: 0, y: 0, z: 1 },
+        },
         xaxis: {
           showticklabels: false,
           title: { text: "" },
           showgrid: true,
-          gridcolor: "rgba(128,128,128,0.15)",
+          gridcolor: "rgba(128,128,128,0.1)",
           zeroline: false,
+          showspikes: false,
         },
         yaxis: {
           showticklabels: false,
           title: { text: "" },
           showgrid: true,
-          gridcolor: "rgba(128,128,128,0.15)",
+          gridcolor: "rgba(128,128,128,0.1)",
           zeroline: false,
+          showspikes: false,
         },
         zaxis: {
           showticklabels: false,
           title: { text: "" },
           showgrid: true,
-          gridcolor: "rgba(128,128,128,0.15)",
+          gridcolor: "rgba(128,128,128,0.1)",
           zeroline: false,
+          showspikes: false,
         },
       },
       margin: { l: 0, r: 0, t: 0, b: 0 },

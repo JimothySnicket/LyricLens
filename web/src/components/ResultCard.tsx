@@ -24,8 +24,11 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 export function ResultCard({ result, expanded, onToggle }: ResultCardProps) {
-  const { song, score, matchReason } = result;
-  const scoreDisplay = (score * 100).toFixed(0);
+  const { song, score, matchReason, mode } = result;
+  // Semantic/hybrid scores are 0-1 cosine similarity, keyword scores are weighted sums
+  const scoreDisplay = mode === "keyword"
+    ? score.toFixed(1)
+    : score.toFixed(3);
 
   const topicScores = Object.entries(song.scores)
     .filter(([key]) => key in SCORE_LABELS)

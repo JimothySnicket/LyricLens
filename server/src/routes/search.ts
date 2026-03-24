@@ -31,9 +31,11 @@ searchRoutes.post("/:mode", async (c) => {
     results = keywordSearch(songs, parsed);
     totalFiltered = songs.length;
   } else if (mode === "semantic") {
-    results = await semanticSearch(parsed);
+    const semanticResult = await semanticSearch(parsed, query);
+    results = semanticResult.results;
+    totalFiltered = semanticResult.totalFiltered;
   } else {
-    const hybridResult = await hybridSearch(parsed);
+    const hybridResult = await hybridSearch(parsed, query);
     results = hybridResult.results;
     totalFiltered = hybridResult.totalFiltered;
   }
