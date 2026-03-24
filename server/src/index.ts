@@ -4,6 +4,7 @@ import { searchRoutes } from "./routes/search";
 import { filterRoutes } from "./routes/filters";
 import { statsRoutes } from "./routes/stats";
 import { vizRoutes } from "./routes/viz";
+import { ragRoutes } from "./routes/rag";
 
 const app = new Hono();
 
@@ -14,6 +15,7 @@ app.route("/api/search", searchRoutes);
 app.route("/api/filters", filterRoutes);
 app.route("/api/stats", statsRoutes);
 app.route("/api/viz", vizRoutes);
+app.route("/api/rag", ragRoutes);
 
 const port = 5201;
 console.log(`LyricLens API listening on port ${port}`);
