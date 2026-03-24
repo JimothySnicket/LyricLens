@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark *));
+
+@theme {
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f8f8f8;
+  --color-bg-tertiary: #f0f0f0;
+  --color-surface: #ffffff;
+  --color-surface-hover: #fafafa;
+  --color-border: #e0e0e0;
+  --color-border-subtle: #eeeeee;
+
+  --color-text: #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #999999;
+  --color-text-inverse: #ffffff;
+
+  --color-accent: #1a1a1a;
+  --color-accent-hover: #333333;
+  --color-accent-subtle: #f0f0f0;
+
+  --color-success: #2e7d32;
+  --color-success-bg: #e8f5e9;
+  --color-warning: #e65100;
+  --color-warning-bg: #fff3e0;
+  --color-info: #1565c0;
+  --color-info-bg: #e3f2fd;
+
+  --color-mode-keyword: #e65100;
+  --color-mode-semantic: #1565c0;
+  --color-mode-hybrid: #6a1b9a;
+
+  --color-genre-rock: #4caf50;
+  --color-genre-pop: #2196f3;
+  --color-genre-country: #ff9800;
+  --color-genre-jazz: #9c27b0;
+  --color-genre-blues: #f44336;
+  --color-genre-reggae: #795548;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+.dark {
+  --color-bg: #0f0f0f;
+  --color-bg-secondary: #1a1a1a;
+  --color-bg-tertiary: #252525;
+  --color-surface: #1a1a1a;
+  --color-surface-hover: #222222;
+  --color-border: #333333;
+  --color-border-subtle: #2a2a2a;
+
+  --color-text: #e8e8e8;
+  --color-text-secondary: #999999;
+  --color-text-tertiary: #666666;
+  --color-text-inverse: #1a1a1a;
+
+  --color-accent: #e8e8e8;
+  --color-accent-hover: #cccccc;
+  --color-accent-subtle: #252525;
+
+  --color-success-bg: #1a2e1a;
+  --color-warning-bg: #2e1a0a;
+  --color-info-bg: #0a1a2e;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
