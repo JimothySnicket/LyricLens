@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+data/raw/
+data/processed/
+pipeline/__pycache__/
+pipeline/.venv/
+*.npz
+.firecrawl/
+nul
