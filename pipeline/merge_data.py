@@ -195,10 +195,14 @@ def main() -> None:
     lyrics_keys = {make_join_key(r["artist"], r["title"]) for _, r in lyrics_df.iterrows()}
     meta_only = hits_keys - lyrics_keys
 
+    # Filter: keep only songs with full metadata (genre != "unknown")
+    filtered_records = [r for r in records if r["genre"] != "unknown"]
+    filtered_out = len(records) - len(filtered_records)
+
     # Write output
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with open(OUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
+        json.dump(filtered_records, f, ensure_ascii=False, indent=2)
 
     # ---------------------------------------------------------------------------
     # Stats
@@ -211,19 +215,15 @@ def main() -> None:
     print(f"  Matched with metadata:            {matched:>6,}")
     print(f"  Lyrics only (no metadata match):  {unmatched_lyrics:>6,}")
     print(f"  Metadata only (skipped):          {len(meta_only):>6,}")
-    print(f"  Total records in output:          {len(records):>6,}")
+    print(f"  Total records before filtering:   {len(records):>6,}")
+    print(f"  Records with unknown genre:       {filtered_out:>6,}")
+    print(f"  Final records in output:          {len(filtered_records):>6,}")
     print(f"  Output file: {OUT_FILE}")
     print("=" * 60)
 
-    # Sample record (first matched)
-    matched_records = [r for r in records if r["genre"] != "unknown"]
-    if matched_records:
-        sample = matched_records[0].copy()
-        sample["lyrics"] = sample["lyrics"][:120] + "…"
-        print("\nSAMPLE RECORD (first matched):")
-        print(json.dumps(sample, indent=2))
-    else:
-        sample = records[0].copy()
+    # Sample record (first from filtered output)
+    if filtered_records:
+        sample = filtered_records[0].copy()
         sample["lyrics"] = sample["lyrics"][:120] + "…"
         print("\nSAMPLE RECORD (first):")
         print(json.dumps(sample, indent=2))
