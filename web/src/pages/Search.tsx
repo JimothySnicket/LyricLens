@@ -86,12 +86,31 @@ export function Search() {
   }
 
   function removeFilter(type: "decade" | "genre", value: number | string) {
-    setActiveFilters((prev) => {
-      if (type === "decade") {
-        return { ...prev, decades: prev.decades.filter((d) => d !== value) };
-      }
-      return { ...prev, genres: prev.genres.filter((g) => g !== value) };
-    });
+    // Remove the filter term from the query text and re-search
+    let newQuery = query;
+    if (type === "decade") {
+      const decadeStr = String(value).slice(2, 4); // 1980 → "80"
+      // Remove decade patterns like "from the 80s", "80s", "1980s"
+      newQuery = newQuery
+        .replace(new RegExp(`\\bfrom\\s+the\\s+${decadeStr}s\\b`, "gi"), "")
+        .replace(new RegExp(`\\bin\\s+the\\s+${decadeStr}s\\b`, "gi"), "")
+        .replace(new RegExp(`\\b${value}s\\b`, "gi"), "")
+        .replace(new RegExp(`\\b${decadeStr}s\\b`, "gi"), "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    } else {
+      newQuery = newQuery
+        .replace(new RegExp(`\\b${value}\\b`, "gi"), "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+    setQuery(newQuery);
+    if (newQuery) {
+      runSearch(newQuery, mode);
+    } else {
+      setResponse(null);
+      setActiveFilters({ decades: [], genres: [] });
+    }
   }
 
   const hasResults = response && response.results.length > 0;
@@ -105,7 +124,7 @@ export function Search() {
           <div className="text-center space-y-2 pb-2">
             <h1 className="text-3xl font-semibold text-(--color-text)">LyricLens</h1>
             <p className="text-(--color-text-secondary) text-base">
-              Search 819 chart hits by keyword, meaning, or vibe.
+              Search 723 chart hits by keyword, meaning, or vibe.
             </p>
           </div>
         )}

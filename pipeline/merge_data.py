@@ -200,6 +200,18 @@ def main() -> None:
     filtered_records = [r for r in records if r["genre"] != "unknown"]
     filtered_out = len(records) - len(filtered_records)
 
+    # Deduplicate by normalized artist+title (keep first occurrence)
+    seen_keys = set()
+    deduped = []
+    for r in filtered_records:
+        key = (normalize(r["artist"]), normalize(r["title"]))
+        if key not in seen_keys:
+            seen_keys.add(key)
+            deduped.append(r)
+    dup_count = len(filtered_records) - len(deduped)
+    filtered_records = deduped
+    print(f"  Duplicates removed:               {dup_count:>6,}")
+
     # Write output
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with open(OUT_FILE, "w", encoding="utf-8") as f:

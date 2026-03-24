@@ -53,7 +53,7 @@ export function HowItWorks() {
       {/* ── Scroll-driven animation section ── */}
       <div ref={scrollRef} className="relative" style={{ height: "500vh" }}>
         {/* Sticky viewport */}
-        <div className="sticky top-14 h-[calc(100vh-56px)] flex items-center justify-center overflow-hidden">
+        <div className="sticky top-14 h-[calc(100vh-56px)] flex items-center justify-center overflow-hidden bg-(--color-bg) z-10">
           <div className="relative w-full max-w-3xl mx-auto" style={{ height: "70vh" }}>
             {/* Intro text — fades out as scroll begins */}
             <IntroOverlay scrollProgress={scrollYProgress} />

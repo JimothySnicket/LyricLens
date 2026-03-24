@@ -82,9 +82,9 @@ def main() -> None:
     # Pair B: romantic vs sadness — expected: moderate similarity
     idx_sadness = 6      # 'Heartbreak Hotel' by Elvis Presley (topic: sadness)
 
-    # Pair C: romantic vs violence — expected: low similarity
-    idx_violence = next(
-        i for i, s in enumerate(songs) if s.get("topic") == "violence"
+    # Pair C: romantic vs intensity — expected: low similarity
+    idx_intensity = next(
+        i for i, s in enumerate(songs) if s.get("topic") == "intensity"
     )
 
     def label(idx: int) -> str:
@@ -93,7 +93,7 @@ def main() -> None:
 
     sim_aa = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_romantic_2])
     sim_ab = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_sadness])
-    sim_ac = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_violence])
+    sim_ac = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_intensity])
 
     print(f"\n  Pair A — two romantic songs (expect high similarity ~0.7-0.9):")
     print(f"    {label(idx_romantic_1)}")
@@ -105,9 +105,9 @@ def main() -> None:
     print(f"    {label(idx_sadness)}")
     print(f"    Similarity: {sim_ab:.4f}")
 
-    print(f"\n  Pair C — romantic vs violence (expect lower):")
+    print(f"\n  Pair C — romantic vs intensity (expect lower):")
     print(f"    {label(idx_romantic_1)}")
-    print(f"    {label(idx_violence)}")
+    print(f"    {label(idx_intensity)}")
     print(f"    Similarity: {sim_ac:.4f}")
 
     # Qualitative verdict
