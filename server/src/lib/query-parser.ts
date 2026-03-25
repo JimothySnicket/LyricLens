@@ -114,15 +114,27 @@ export function parseQuery(raw: string): ParsedQuery {
     /\bby\s+([a-z][a-z0-9 '&.-]*?)(?:\s+(?:from|in the|about|in)\b|$)/,
   );
   if (artistMatch) {
-    const artistTokens = artistMatch[1]
+    const rawTokens = artistMatch[1]
       .trim()
       .split(/\s+/)
       .filter(t => t.length > 0);
-    result.filters.artistHint = artistTokens;
-    result.scopeArtist = true;
+    // Strip trailing tokens that are actually mood, genre, or audio keywords
+    const knownKeywords = new Set([
+      ...Object.keys(MOOD_MAP),
+      ...Object.keys(AUDIO_MAP),
+      ...GENRE_SET,
+      ...Object.keys(GENRE_ALIASES),
+    ]);
+    while (rawTokens.length > 0 && knownKeywords.has(rawTokens[rawTokens.length - 1])) {
+      rawTokens.pop();
+    }
+    if (rawTokens.length > 0) {
+      result.filters.artistHint = rawTokens;
+      result.scopeArtist = true;
+      result.interpretations.push({ type: "artist", label: rawTokens.join(" ") });
+    }
     // Remove the matched artist clause from the working string.
     working = working.replace(artistMatch[0], " ").replace(/\s{2,}/g, " ").trim();
-    result.interpretations.push({ type: "artist", label: artistMatch[1].trim() });
   }
 
   // -------------------------------------------------------------------------
