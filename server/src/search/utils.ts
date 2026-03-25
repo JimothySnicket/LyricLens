@@ -7,26 +7,11 @@ export function payloadToSong(id: any, payload: any): Song {
     artist: payload.artist ?? "",
     year: payload.year ?? 0,
     decade: payload.decade ?? 0,
-    genre: payload.genre ?? "unknown",
+    genre: payload.genre ?? "",
     chartPosition: payload.chart_position ?? 0,
-    topic: payload.topic ?? "",
     lyrics: payload.lyrics ?? "",
-    valence: payload.valence ?? 0,
-    energy: payload.energy ?? 0,
-    danceability: payload.danceability ?? 0,
-    acousticness: payload.acousticness ?? 0,
-    scores: {
-      sa: payload.sa ?? 0,
-      ro: payload.ro ?? 0,
-      vi: payload.vi ?? 0,
-      da: payload.da ?? 0,
-      ob: payload.ob ?? 0,
-      fe: payload.fe ?? 0,
-      nt: payload.nt ?? 0,
-      wl: payload.wl ?? 0,
-      co: payload.co ?? 0,
-      mu: payload.mu ?? 0,
-    },
+    album: payload.album ?? "",
+    writers: payload.writers ?? "",
   };
 }
 
@@ -38,6 +23,7 @@ export function buildMatchReason(
   const parts: string[] = [];
   if (parsed.filters.decades.length > 0) parts.push("decade: " + parsed.filters.decades.join(", "));
   if (parsed.filters.genres.length > 0) parts.push("genre: " + parsed.filters.genres.join(", "));
+  if (parsed.filters.artistHint.length > 0) parts.push("artist: " + parsed.filters.artistHint.join(" "));
   if (mode === "semantic" || mode === "hybrid") {
     parts.push("similarity: " + score.toFixed(3));
   }

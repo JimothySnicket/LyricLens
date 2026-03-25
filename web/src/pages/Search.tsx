@@ -124,7 +124,7 @@ export function Search() {
           <div className="text-center space-y-2 pb-2">
             <h1 className="text-3xl font-semibold text-(--color-text)">LyricLens</h1>
             <p className="text-(--color-text-secondary) text-base">
-              Search 723 chart hits by keyword, meaning, or vibe.
+              Search 2,779 chart hits by keyword, meaning, or vibe.
             </p>
           </div>
         )}

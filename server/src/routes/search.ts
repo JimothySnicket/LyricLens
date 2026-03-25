@@ -24,7 +24,7 @@ searchRoutes.post("/:mode", async (c) => {
   const parsed = parseQuery(query);
 
   let results;
-  let totalFiltered = 723;
+  let totalFiltered = 2779;
 
   if (mode === "keyword") {
     const songs = getSongs();

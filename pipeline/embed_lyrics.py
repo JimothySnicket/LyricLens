@@ -71,50 +71,23 @@ def main() -> None:
     print(f"  File size      : {file_size_kb:.1f} KB ({OUTPUT_PATH})")
 
     # ------------------------------------------------------------------
-    # 6. Sanity check — cosine similarity between representative pairs
+    # 6. Sanity check — cosine similarity between 3 random pairs
     # ------------------------------------------------------------------
     print("\n--- Sanity check: cosine similarities ---")
-
-    # Pair A: two romantic songs — expected: relatively high similarity
-    idx_romantic_1 = 3   # 'KISS' by Dean Martin (topic: romantic)
-    idx_romantic_2 = 10  # 'Love Me Tender' by Elvis Presley (topic: romantic)
-
-    # Pair B: romantic vs sadness — expected: moderate similarity
-    idx_sadness = 6      # 'Heartbreak Hotel' by Elvis Presley (topic: sadness)
-
-    # Pair C: romantic vs intensity — expected: low similarity
-    idx_intensity = next(
-        i for i, s in enumerate(songs) if s.get("topic") == "intensity"
-    )
+    import random
+    random.seed(42)
+    indices = random.sample(range(len(songs)), min(6, len(songs)))
 
     def label(idx: int) -> str:
         s = songs[idx]
-        return f"\"{s['title']}\" by {s['artist']} [topic={s['topic']}]"
+        return f"\"{s['title']}\" by {s['artist']} [{s.get('genre', '?')}]"
 
-    sim_aa = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_romantic_2])
-    sim_ab = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_sadness])
-    sim_ac = cosine_similarity(embeddings[idx_romantic_1], embeddings[idx_intensity])
-
-    print(f"\n  Pair A — two romantic songs (expect high similarity ~0.7-0.9):")
-    print(f"    {label(idx_romantic_1)}")
-    print(f"    {label(idx_romantic_2)}")
-    print(f"    Similarity: {sim_aa:.4f}")
-
-    print(f"\n  Pair B — romantic vs sadness (expect moderate ~0.5-0.7):")
-    print(f"    {label(idx_romantic_1)}")
-    print(f"    {label(idx_sadness)}")
-    print(f"    Similarity: {sim_ab:.4f}")
-
-    print(f"\n  Pair C — romantic vs intensity (expect lower):")
-    print(f"    {label(idx_romantic_1)}")
-    print(f"    {label(idx_intensity)}")
-    print(f"    Similarity: {sim_ac:.4f}")
-
-    # Qualitative verdict
-    if sim_aa > sim_ac:
-        print("\n  Result: PASS — same-topic songs are more similar than cross-topic.")
-    else:
-        print("\n  Result: WARN — expected same-topic > cross-topic, but scores differ.")
+    for i in range(0, len(indices) - 1, 2):
+        a, b = indices[i], indices[i + 1]
+        sim = cosine_similarity(embeddings[a], embeddings[b])
+        print(f"  {label(a)}  vs  {label(b)}")
+        print(f"    Similarity: {sim:.4f}")
+        print()
 
     print("\nDone.")
 

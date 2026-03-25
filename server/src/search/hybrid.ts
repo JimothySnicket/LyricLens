@@ -21,15 +21,6 @@ export async function hybridSearch(
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
   }
-  for (const mood of parsed.filters.moods) {
-    if (mood.min !== undefined) {
-      must.push({ key: mood.key, range: { gte: mood.min } });
-    }
-  }
-  for (const af of parsed.filters.audioFeatures) {
-    if (af.min !== undefined) must.push({ key: af.key, range: { gte: af.min } });
-    if (af.max !== undefined) must.push({ key: af.key, range: { lte: af.max } });
-  }
   const filter = must.length > 0 ? { must } : undefined;
 
   // Count filtered pool

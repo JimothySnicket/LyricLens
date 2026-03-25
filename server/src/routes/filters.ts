@@ -1,12 +1,14 @@
 import { Hono } from "hono";
+import { getSongs } from "../lib/data";
 
 const filterRoutes = new Hono();
 
 filterRoutes.get("/", (c) => {
-  return c.json({
-    decades: [1950, 1960, 1970, 1980, 1990, 2000, 2010],
-    genres: ["rock", "pop", "jazz", "blues", "country", "reggae"],
-  });
+  const songs = getSongs();
+  const genres = Array.from(new Set(songs.map((s) => s.genre))).sort();
+  const decades = Array.from(new Set(songs.map((s) => s.decade))).sort();
+
+  return c.json({ decades, genres });
 });
 
 export { filterRoutes };

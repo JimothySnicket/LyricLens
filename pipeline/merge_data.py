@@ -21,6 +21,7 @@ OUT_DIR = REPO_ROOT / "data" / "processed"
 OUT_FILE = OUT_DIR / "merged_songs.json"
 
 LYRICS_DB = RAW_DIR / "lyrics_db.csv"
+LYRICS_PROGRESS = RAW_DIR / "lyrics_progress.json"
 HITS_CSV = RAW_DIR / "hits_filtered.csv"
 
 

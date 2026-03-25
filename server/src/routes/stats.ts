@@ -4,7 +4,7 @@ const statsRoutes = new Hono();
 
 statsRoutes.get("/", (c) => {
   return c.json({
-    totalSongs: 723,
+    totalSongs: 2779,
     precision: { keyword: null, semantic: null, hybrid: null },
     mrr: null,
     clusterPurity: null,

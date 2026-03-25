@@ -21,16 +21,6 @@ export async function semanticSearch(
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
   }
-  // Mood/audio as range filters
-  for (const mood of parsed.filters.moods) {
-    if (mood.min !== undefined) {
-      must.push({ key: mood.key, range: { gte: mood.min } });
-    }
-  }
-  for (const af of parsed.filters.audioFeatures) {
-    if (af.min !== undefined) must.push({ key: af.key, range: { gte: af.min } });
-    if (af.max !== undefined) must.push({ key: af.key, range: { lte: af.max } });
-  }
   const filter = must.length > 0 ? { must } : undefined;
 
   // semanticText always has content now (parser doesn't consume words)
@@ -59,7 +49,7 @@ export async function semanticSearch(
 
   const countResult = filter
     ? await client.count(COLLECTION_NAME, { filter, exact: true })
-    : { count: 723 };
+    : { count: 2779 };
 
   const response = await client.query(COLLECTION_NAME, {
     query: vector,

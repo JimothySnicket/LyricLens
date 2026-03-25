@@ -1,9 +1,5 @@
 import type { Song, ParsedQuery, SearchResult } from "../lib/types";
 
-// ---------------------------------------------------------------------------
-// Weight constants
-// ---------------------------------------------------------------------------
-
 const WEIGHT_TITLE_BASE = 6;
 const WEIGHT_TITLE_SCOPED = 12;
 const WEIGHT_LYRICS_BASE = 2;
@@ -14,31 +10,13 @@ const WEIGHT_DECADE = 3;
 
 const MAX_RESULTS = 30;
 
-// ---------------------------------------------------------------------------
-// Audio feature fields on the Song object that can be addressed by key
-// ---------------------------------------------------------------------------
-
-type AudioKey = "valence" | "energy" | "danceability" | "acousticness";
-
-const AUDIO_FIELDS: Set<string> = new Set([
-  "valence",
-  "energy",
-  "danceability",
-  "acousticness",
-]);
-
-// ---------------------------------------------------------------------------
-// keywordSearch
-// ---------------------------------------------------------------------------
-
 export function keywordSearch(
   songs: Song[],
   parsed: ParsedQuery,
 ): SearchResult[] {
   const { scopeTitle, scopeLyrics, scopeArtist, filters, terms } = parsed;
-  const { genres, decades, moods, audioFeatures, artistHint } = filters;
+  const { genres, decades, artistHint } = filters;
 
-  // Determine effective weights based on scope flags
   const titleWeight = scopeTitle ? WEIGHT_TITLE_SCOPED : WEIGHT_TITLE_BASE;
   const lyricsWeight = scopeLyrics ? WEIGHT_LYRICS_SCOPED : WEIGHT_LYRICS_BASE;
   const artistWeight = scopeArtist ? WEIGHT_ARTIST_SCOPED : WEIGHT_ARTIST_BASE;
@@ -46,30 +24,22 @@ export function keywordSearch(
   const results: SearchResult[] = [];
 
   for (const song of songs) {
-    // -----------------------------------------------------------------------
-    // Hard filters — skip songs that don't match
-    // -----------------------------------------------------------------------
-
-    // Genre filter
-    if (genres.length > 0 && !genres.includes(song.genre.toLowerCase())) {
-      continue;
+    // Hard filters
+    if (genres.length > 0) {
+      const songGenre = song.genre.toLowerCase();
+      const match = genres.some((g) => songGenre.includes(g.toLowerCase()));
+      if (!match) continue;
     }
 
-    // Decade filter
     if (decades.length > 0 && !decades.includes(song.decade)) {
       continue;
     }
 
-    // Artist hint filter — all hint tokens must appear in the artist name
     if (artistHint.length > 0) {
       const lowerArtist = song.artist.toLowerCase();
       const allMatch = artistHint.every((token) => lowerArtist.includes(token));
       if (!allMatch) continue;
     }
-
-    // -----------------------------------------------------------------------
-    // Per-term scoring
-    // -----------------------------------------------------------------------
 
     const lowerTitle = song.title.toLowerCase();
     const lowerLyrics = song.lyrics.toLowerCase();
@@ -78,7 +48,6 @@ export function keywordSearch(
     let score = 0;
     const reasons: string[] = [];
 
-    // Track per-scope matches for scope enforcement
     let titleTermMatches = 0;
     let lyricsTermMatches = 0;
     let artistTermMatches = 0;
@@ -88,145 +57,59 @@ export function keywordSearch(
       const inLyrics = lowerLyrics.includes(term);
       const inArtist = lowerArtist.includes(term);
 
-      if (inTitle) {
-        score += titleWeight;
-        titleTermMatches++;
-      }
-      if (inLyrics) {
-        score += lyricsWeight;
-        lyricsTermMatches++;
-      }
-      if (inArtist) {
-        score += artistWeight;
-        artistTermMatches++;
-      }
+      if (inTitle) { score += titleWeight; titleTermMatches++; }
+      if (inLyrics) { score += lyricsWeight; lyricsTermMatches++; }
+      if (inArtist) { score += artistWeight; artistTermMatches++; }
     }
 
-    // Scope enforcement: if a scope is active and there are terms, require
-    // at least one term to match in that scope.
+    // Scope enforcement
     if (terms.length > 0) {
       if (scopeTitle && titleTermMatches === 0) continue;
       if (scopeLyrics && lyricsTermMatches === 0) continue;
-      // scopeArtist is covered by the artistHint filter above; if there are
-      // no artistHint tokens but scopeArtist is set, enforce term match.
-      if (scopeArtist && artistHint.length === 0 && artistTermMatches === 0) {
-        continue;
-      }
+      if (scopeArtist && artistHint.length === 0 && artistTermMatches === 0) continue;
     }
 
-    // -----------------------------------------------------------------------
-    // Decade scoring (bonus for matching the requested decade)
-    // -----------------------------------------------------------------------
-
+    // Decade bonus
     if (decades.length > 0 && decades.includes(song.decade)) {
       score += WEIGHT_DECADE;
       reasons.push(`decade: ${song.decade}s`);
     }
 
-    // -----------------------------------------------------------------------
-    // Build match reasons from term hits
-    // -----------------------------------------------------------------------
-
+    // Match reasons
     if (terms.length > 0) {
-      const matchedInTitle = terms.filter((t) =>
-        lowerTitle.includes(t),
-      );
-      const matchedInLyrics = terms.filter((t) =>
-        lowerLyrics.includes(t),
-      );
-      const matchedInArtist = terms.filter((t) =>
-        lowerArtist.includes(t),
-      );
-
-      if (matchedInTitle.length > 0) {
-        reasons.push(`title matches: ${matchedInTitle.join(", ")}`);
-      }
-      if (matchedInLyrics.length > 0) {
-        reasons.push(`lyrics matches: ${matchedInLyrics.join(", ")}`);
-      }
-      if (matchedInArtist.length > 0) {
-        reasons.push(`artist matches: ${matchedInArtist.join(", ")}`);
-      }
+      const inT = terms.filter((t) => lowerTitle.includes(t));
+      const inL = terms.filter((t) => lowerLyrics.includes(t));
+      const inA = terms.filter((t) => lowerArtist.includes(t));
+      if (inT.length > 0) reasons.push(`title: ${inT.join(", ")}`);
+      if (inL.length > 0) reasons.push(`lyrics: ${inL.join(", ")}`);
+      if (inA.length > 0) reasons.push(`artist: ${inA.join(", ")}`);
     }
 
-    if (artistHint.length > 0) {
-      reasons.push(`artist: ${song.artist}`);
-    }
+    if (artistHint.length > 0) reasons.push(`artist: ${song.artist}`);
+    if (genres.length > 0) reasons.push(`genre: ${song.genre}`);
 
-    // -----------------------------------------------------------------------
-    // Mood scoring
-    // -----------------------------------------------------------------------
-
-    for (const mood of moods) {
-      const value = song.scores[mood.key] ?? 0;
-      const min = mood.min ?? 0;
-      const max = mood.max ?? 1;
-      if (value >= min && value <= max) {
-        score += value * 3;
-        reasons.push(`mood: ${mood.label} (${value.toFixed(2)})`);
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Audio feature scoring
-    // -----------------------------------------------------------------------
-
-    for (const af of audioFeatures) {
-      if (!AUDIO_FIELDS.has(af.key)) continue;
-      const value = song[af.key as AudioKey];
-      const min = af.min ?? 0;
-      const max = af.max ?? 1;
-      if (value >= min && value <= max) {
-        // Score contribution proportional to how well the value fits the range
-        const mid = (min + max) / 2;
-        const span = (max - min) / 2 || 0.5;
-        const proximity = 1 - Math.abs(value - mid) / (span + 0.001);
-        score += proximity * 2;
-        reasons.push(`audio: ${af.label} (${value.toFixed(2)})`);
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Genre match reason (already filtered, so if genre filter is active it matched)
-    // -----------------------------------------------------------------------
-
-    if (genres.length > 0) {
-      reasons.push(`genre: ${song.genre}`);
-    }
-
-    // -----------------------------------------------------------------------
-    // Skip songs with zero primary score when scoring criteria exist.
-    // The chart tiebreaker is only applied after a song earns primary score,
-    // so it cannot rescue a song that matched no terms / moods / audio.
-    // -----------------------------------------------------------------------
-
-    const hasScoringCriteria =
-      terms.length > 0 || moods.length > 0 || audioFeatures.length > 0;
-
-    if (hasScoringCriteria && score <= 0) continue;
-
-    // -----------------------------------------------------------------------
-    // Chart position tiebreaker (applied after primary score check)
-    // -----------------------------------------------------------------------
-
+    // Chart position tiebreaker
     if (song.chartPosition >= 1 && song.chartPosition <= 5) {
       score += 0.3;
-      reasons.push(`chart: #${song.chartPosition}`);
     } else if (song.chartPosition >= 6 && song.chartPosition <= 10) {
       score += 0.15;
-      reasons.push(`chart: #${song.chartPosition}`);
     }
+
+    // Need some scoring criteria to have been active
+    const hasCriteria = terms.length > 0 || artistHint.length > 0;
+    if (hasCriteria && score <= 0) continue;
+
+    // For filter-only queries (genre, decade), include all matches
+    if (!hasCriteria && genres.length === 0 && decades.length === 0) continue;
 
     results.push({
       song,
       score,
-      matchReason: reasons.length > 0 ? reasons.join("; ") : "filter match",
+      matchReason: reasons.join("; ") || "filter match",
       mode: "keyword",
     });
   }
 
-  // Sort by score descending
   results.sort((a, b) => b.score - a.score);
-
   return results.slice(0, MAX_RESULTS);
 }
