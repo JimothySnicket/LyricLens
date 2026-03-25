@@ -66,27 +66,46 @@ const MOOD_MAP: Record<string, FeatureSpec> = {
   lonely:      { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
   melancholy:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
   mellow:      { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
+  moody:       { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
+  somber:      { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  bittersweet: { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
+  nostalgic:   { key: "emotions.sadness",  label: "sadness",  min: 0.15 },
+  wistful:     { key: "emotions.sadness",  label: "sadness",  min: 0.15 },
   // Joy
   happy:       { key: "emotions.joy",      label: "joy",      min: 0.3 },
   joyful:      { key: "emotions.joy",      label: "joy",      min: 0.3 },
   cheerful:    { key: "emotions.joy",      label: "joy",      min: 0.25 },
   upbeat:      { key: "emotions.joy",      label: "joy",      min: 0.25 },
   fun:         { key: "emotions.joy",      label: "joy",      min: 0.2 },
+  playful:     { key: "emotions.joy",      label: "joy",      min: 0.2 },
+  euphoric:    { key: "emotions.joy",      label: "joy",      min: 0.3 },
+  feelgood:    { key: "emotions.joy",      label: "joy",      min: 0.2 },
   // Anger
   angry:       { key: "emotions.anger",    label: "anger",    min: 0.3 },
   intense:     { key: "emotions.anger",    label: "anger",    min: 0.25 },
   aggressive:  { key: "emotions.anger",    label: "anger",    min: 0.25 },
+  furious:     { key: "emotions.anger",    label: "anger",    min: 0.3 },
+  rebellious:  { key: "emotions.anger",    label: "anger",    min: 0.2 },
   // Fear
   scary:       { key: "emotions.fear",     label: "fear",     min: 0.3 },
   dark:        { key: "emotions.fear",     label: "fear",     min: 0.25 },
   eerie:       { key: "emotions.fear",     label: "fear",     min: 0.2 },
+  haunting:    { key: "emotions.fear",     label: "fear",     min: 0.2 },
+  creepy:      { key: "emotions.fear",     label: "fear",     min: 0.25 },
   // Surprise
   surprising:  { key: "emotions.surprise", label: "surprise", min: 0.25 },
 };
 
 // No audio feature fields in current dataset — AUDIO_MAP is empty.
-// Mood words that could be confused with audio terms are handled in MOOD_MAP.
 const AUDIO_MAP: Record<string, FeatureSpec> = {};
+
+// Multi-word mood phrases — checked before single-word tokenization
+const MULTI_WORD_MOODS: Record<string, FeatureSpec> = {
+  "feel good":    { key: "emotions.joy",      label: "joy",      min: 0.2 },
+  "feel-good":    { key: "emotions.joy",      label: "joy",      min: 0.2 },
+  "broken heart": { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  "broken hearted": { key: "emotions.sadness", label: "sadness", min: 0.25 },
+};
 
 // Multi-word audio phrases sorted longest-first so they are matched before
 // their constituent single words.
@@ -162,8 +181,8 @@ export function parseQuery(raw: string): ParsedQuery {
   // -------------------------------------------------------------------------
   // 2. Decades: "from the 80s", "in the 1960s", "80s", "1980s", etc.
   // -------------------------------------------------------------------------
-  // Match decade patterns: "80s", "1980s", "from the 80s"
-  const decadeRegex = /\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})s\b/g;
+  // Match decade patterns: "80s", "80's", "1980s", "from the 80s"
+  const decadeRegex = /\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})'?s\b/g;
   let decadeMatch: RegExpExecArray | null;
   while ((decadeMatch = decadeRegex.exec(working)) !== null) {
     const raw_num = decadeMatch[1];
@@ -180,7 +199,7 @@ export function parseQuery(raw: string): ParsedQuery {
     }
   }
   working = working
-    .replace(/\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})s\b/g, " ")
+    .replace(/\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})'?s\b/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
 
@@ -247,6 +266,22 @@ export function parseQuery(raw: string): ParsedQuery {
       if (!alreadyKeyed) {
         result.filters.audioFeatures.push({ ...spec });
         result.interpretations.push({ type: "audio", label: spec.label });
+      }
+      working = working.replace(re, " ").replace(/\s{2,}/g, " ").trim();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 5b. Multi-word mood phrases (e.g. "feel good", "broken heart")
+  // -------------------------------------------------------------------------
+  for (const [phrase, spec] of Object.entries(MULTI_WORD_MOODS)) {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\b${escaped}\\b`, "g");
+    if (re.test(working)) {
+      const alreadyKeyed = result.filters.moods.some(m => m.key === spec.key);
+      if (!alreadyKeyed) {
+        result.filters.moods.push({ ...spec });
+        result.interpretations.push({ type: "mood", label: spec.label });
       }
       working = working.replace(re, " ").replace(/\s{2,}/g, " ").trim();
     }
