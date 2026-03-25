@@ -1,10 +1,11 @@
 """
-build_index.py — Upload 819 song embeddings to Qdrant Cloud.
+build_index.py — Upload song embeddings to Qdrant Cloud.
 
 Collection: song_lyrics
-Vectors:    384-dim MiniLM-L6-v2, Cosine distance
-Payload:    song metadata with lyrics truncated to 500 chars,
-            topic scores flattened to top-level fields.
+Named vectors:
+  - "lyrics"  (384-dim) — MiniLM on raw lyrics text
+  - "summary" (384-dim) — MiniLM on generated song profile summaries
+Payload: song metadata, emotions, lyrics preview
 """
 
 import json
@@ -15,23 +16,17 @@ import numpy as np
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient, models
 
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
 COLLECTION_NAME = "song_lyrics"
 VECTOR_SIZE = 384
 BATCH_SIZE = 100
 LYRICS_MAX_CHARS = 500
-SCORE_KEYS = ("sa", "ro", "vi", "da", "ob", "fe", "nt", "wl", "co", "mu")
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
 SONGS_PATH = os.path.join(DATA_DIR, "merged_songs.json")
-EMBEDDINGS_PATH = os.path.join(DATA_DIR, "embeddings.npz")
+LYRICS_EMBEDDINGS_PATH = os.path.join(DATA_DIR, "embeddings.npz")
+SUMMARY_EMBEDDINGS_PATH = os.path.join(DATA_DIR, "summary_embeddings.npz")
 
-
-# ---------------------------------------------------------------------------
-# 1. Load environment
-# ---------------------------------------------------------------------------
+# Load environment
 env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(dotenv_path=env_path)
 
@@ -40,59 +35,46 @@ qdrant_api_key = os.environ["QDRANT_API_KEY"]
 
 print(f"Qdrant URL: {qdrant_url}")
 
-
-# ---------------------------------------------------------------------------
-# 2. Load data
-# ---------------------------------------------------------------------------
+# Load data
 print(f"\nLoading songs from {SONGS_PATH} ...")
 with open(SONGS_PATH, "r", encoding="utf-8") as f:
     songs = json.load(f)
 print(f"  {len(songs)} songs loaded.")
 
-print(f"Loading embeddings from {EMBEDDINGS_PATH} ...")
-data = np.load(EMBEDDINGS_PATH)
-embeddings = data["embeddings"]  # shape (819, 384)
-print(f"  Embeddings shape: {embeddings.shape}, dtype: {embeddings.dtype}")
+print(f"Loading lyrics embeddings ...")
+lyrics_emb = np.load(LYRICS_EMBEDDINGS_PATH)["embeddings"]
+print(f"  Lyrics embeddings: {lyrics_emb.shape}")
 
-assert len(songs) == embeddings.shape[0], (
-    f"Song count mismatch: {len(songs)} songs vs {embeddings.shape[0]} embeddings"
+print(f"Loading summary embeddings ...")
+summary_emb = np.load(SUMMARY_EMBEDDINGS_PATH)["embeddings"]
+print(f"  Summary embeddings: {summary_emb.shape}")
+
+assert len(songs) == lyrics_emb.shape[0] == summary_emb.shape[0], (
+    f"Count mismatch: {len(songs)} songs, {lyrics_emb.shape[0]} lyrics emb, {summary_emb.shape[0]} summary emb"
 )
-assert embeddings.shape[1] == VECTOR_SIZE, (
-    f"Expected {VECTOR_SIZE}-dim vectors, got {embeddings.shape[1]}"
-)
 
-
-# ---------------------------------------------------------------------------
-# 3. Connect to Qdrant Cloud
-# ---------------------------------------------------------------------------
+# Connect
 print("\nConnecting to Qdrant Cloud ...")
 client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
 print("  Connected.")
 
-
-# ---------------------------------------------------------------------------
-# 4. Create (or recreate) collection
-# ---------------------------------------------------------------------------
-print(f"\nRecreating collection '{COLLECTION_NAME}' ...")
+# Create collection with named vectors
+print(f"\nRecreating collection '{COLLECTION_NAME}' with named vectors ...")
 if client.collection_exists(COLLECTION_NAME):
-    print(f"  Collection exists — deleting it first.")
+    print(f"  Collection exists - deleting it first.")
     client.delete_collection(COLLECTION_NAME)
 
 client.create_collection(
     collection_name=COLLECTION_NAME,
-    vectors_config=models.VectorParams(
-        size=VECTOR_SIZE,
-        distance=models.Distance.COSINE,
-    ),
+    vectors_config={
+        "lyrics": models.VectorParams(size=VECTOR_SIZE, distance=models.Distance.COSINE),
+        "summary": models.VectorParams(size=VECTOR_SIZE, distance=models.Distance.COSINE),
+    },
 )
-print(f"  Collection '{COLLECTION_NAME}' created (size={VECTOR_SIZE}, distance=Cosine).")
+print(f"  Collection created with 'lyrics' + 'summary' vectors ({VECTOR_SIZE}-dim each).")
 
 
-# ---------------------------------------------------------------------------
-# 5. Build and upload points in batches of BATCH_SIZE
-# ---------------------------------------------------------------------------
 def build_payload(song: dict) -> dict:
-    """Build Qdrant payload from song dict."""
     payload = {
         "title": song.get("title"),
         "artist": song.get("artist"),
@@ -102,15 +84,15 @@ def build_payload(song: dict) -> dict:
         "chart_position": song.get("chart_position"),
         "lyrics": (song.get("lyrics") or "")[:LYRICS_MAX_CHARS],
         "album": song.get("album", ""),
-        "writers": song.get("writers", ""),
+        "summary": song.get("summary", ""),
     }
-    # Include emotions as nested object (Qdrant supports nested field filtering)
     emotions = song.get("emotions")
     if emotions:
         payload["emotions"] = emotions
     return payload
 
 
+# Upload
 print(f"\nUploading {len(songs)} points in batches of {BATCH_SIZE} ...")
 total_uploaded = 0
 
@@ -119,7 +101,10 @@ for batch_start in range(0, len(songs), BATCH_SIZE):
     points = [
         models.PointStruct(
             id=i,
-            vector=embeddings[i].tolist(),
+            vector={
+                "lyrics": lyrics_emb[i].tolist(),
+                "summary": summary_emb[i].tolist(),
+            },
             payload=build_payload(songs[i]),
         )
         for i in range(batch_start, batch_end)
@@ -130,45 +115,33 @@ for batch_start in range(0, len(songs), BATCH_SIZE):
 
 print(f"Upload complete: {total_uploaded} points.")
 
-
-# ---------------------------------------------------------------------------
-# 6. Verify: collection info and point count
-# ---------------------------------------------------------------------------
+# Verify
 print(f"\n--- Collection info ---")
 info = client.get_collection(COLLECTION_NAME)
 print(f"  Status:      {info.status}")
-print(f"  Vector size: {info.config.params.vectors.size}")
-print(f"  Distance:    {info.config.params.vectors.distance}")
+print(f"  Vectors:     lyrics ({VECTOR_SIZE}d) + summary ({VECTOR_SIZE}d)")
 
 count_result = client.count(COLLECTION_NAME, exact=True)
 print(f"  Point count: {count_result.count}")
+assert count_result.count == len(songs)
+print("  Point count matches. OK")
 
-assert count_result.count == len(songs), (
-    f"Expected {len(songs)} points, found {count_result.count}"
-)
-print("  Point count matches song count. OK")
-
-
-# ---------------------------------------------------------------------------
-# 7. Quick test search with a random vector
-# ---------------------------------------------------------------------------
+# Test search on both vectors
 print(f"\n--- Test search ---")
-random_idx = random.randint(0, len(songs) - 1)
-query_vector = embeddings[random_idx].tolist()
-print(f"  Query: embedding[{random_idx}] ({songs[random_idx]['title']} — {songs[random_idx]['artist']})")
+test_idx = random.randint(0, len(songs) - 1)
+test_song = songs[test_idx]
+print(f"  Test song: {test_song['title']} by {test_song['artist']}")
 
-results = client.query_points(
-    collection_name=COLLECTION_NAME,
-    query=query_vector,
-    limit=5,
-    with_payload=["title", "artist", "topic"],
-)
-
-print("  Top 5 results:")
-for hit in results.points:
-    print(
-        f"    id={hit.id:3d}  score={hit.score:.4f}  "
-        f"{hit.payload['title']} — {hit.payload['artist']}  [{hit.payload.get('genre', '?')}]"
+for vec_name in ["lyrics", "summary"]:
+    results = client.query_points(
+        collection_name=COLLECTION_NAME,
+        query=lyrics_emb[test_idx].tolist() if vec_name == "lyrics" else summary_emb[test_idx].tolist(),
+        using=vec_name,
+        limit=3,
+        with_payload=["title", "artist"],
     )
+    print(f"\n  Top 3 by '{vec_name}' vector:")
+    for hit in results.points:
+        print(f"    score={hit.score:.4f}  {hit.payload['title']} by {hit.payload['artist']}")
 
 print("\nDone. Qdrant index built successfully.")

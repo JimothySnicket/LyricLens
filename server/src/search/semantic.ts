@@ -35,7 +35,7 @@ export async function semanticSearch(
 
   // If there's truly nothing to embed, just scroll with filters
   if (!queryText.trim()) {
-    if (!filter) return { results: [], totalFiltered: 723 };
+    if (!filter) return { results: [], totalFiltered: 2742 };
     const scrollResult = await client.scroll(COLLECTION_NAME, {
       filter,
       limit,
@@ -56,10 +56,13 @@ export async function semanticSearch(
 
   const countResult = filter
     ? await client.count(COLLECTION_NAME, { filter, exact: true })
-    : { count: 2779 };
+    : { count: 2742 };
 
+  // Search against the summary vector — matches conceptual queries better
+  // than raw lyrics (the summary describes the song's vibe, not its words)
   const response = await client.query(COLLECTION_NAME, {
     query: vector,
+    using: "summary",
     filter,
     limit,
     with_payload: true,

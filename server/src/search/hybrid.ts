@@ -61,6 +61,7 @@ export async function hybridSearch(
 
   const response = await client.query(COLLECTION_NAME, {
     query: vector,
+    using: "summary",
     filter,
     limit: fetchLimit,
     with_payload: true,
