@@ -128,17 +128,16 @@ export function parseQuery(raw: string): ParsedQuery {
   // -------------------------------------------------------------------------
   // 2. Decades: "from the 80s", "in the 1960s", "80s", "1980s", etc.
   // -------------------------------------------------------------------------
+  // Match decade patterns: "80s", "1980s", "from the 80s"
   const decadeRegex = /\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})s\b/g;
   let decadeMatch: RegExpExecArray | null;
   while ((decadeMatch = decadeRegex.exec(working)) !== null) {
     const raw_num = decadeMatch[1];
     let decade: number;
     if (raw_num.length === 2) {
-      // "80s" → 1980, "60s" → 1960
       const prefix = parseInt(raw_num, 10) >= 20 ? 1900 : 2000;
       decade = prefix + parseInt(raw_num, 10);
     } else {
-      // "1960s" / "2000s" → floor to decade
       decade = Math.floor(parseInt(raw_num, 10) / 10) * 10;
     }
     if (!result.filters.decades.includes(decade)) {
@@ -146,9 +145,24 @@ export function parseQuery(raw: string): ParsedQuery {
       result.interpretations.push({ type: "decade", label: `${decade}s` });
     }
   }
-  // Strip decade expressions from working string.
   working = working
     .replace(/\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})s\b/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  // Match bare years: "1986", "2003" — map to decade
+  const yearRegex = /\b(19[5-9]\d|20[0-2]\d)\b/g;
+  let yearMatch: RegExpExecArray | null;
+  while ((yearMatch = yearRegex.exec(working)) !== null) {
+    const year = parseInt(yearMatch[1], 10);
+    const decade = Math.floor(year / 10) * 10;
+    if (!result.filters.decades.includes(decade)) {
+      result.filters.decades.push(decade);
+      result.interpretations.push({ type: "decade", label: `${decade}s (from ${year})` });
+    }
+  }
+  working = working
+    .replace(/\b(19[5-9]\d|20[0-2]\d)\b/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
 

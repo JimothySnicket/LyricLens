@@ -12,6 +12,15 @@ export async function search(query: string, mode: SearchMode): Promise<SearchRes
   return res.json();
 }
 
+export async function searchAll(query: string): Promise<Record<SearchMode, SearchResponse>> {
+  const [keyword, semantic, hybrid] = await Promise.all([
+    search(query, "keyword"),
+    search(query, "semantic"),
+    search(query, "hybrid"),
+  ]);
+  return { keyword, semantic, hybrid };
+}
+
 export async function getFilters(): Promise<{ decades: number[]; genres: string[] }> {
   const res = await fetch(`${BASE}/filters`);
   if (!res.ok) throw new Error(`Filters failed: ${res.status}`);
