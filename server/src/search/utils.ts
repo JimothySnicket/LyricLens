@@ -12,6 +12,7 @@ export function payloadToSong(id: any, payload: any): Song {
     lyrics: payload.lyrics ?? "",
     album: payload.album ?? "",
     writers: payload.writers ?? "",
+    emotions: payload.emotions ?? {},
   };
 }
 

@@ -23,6 +23,7 @@ export function getSongs(): Song[] {
       lyrics: s.lyrics ?? "",
       album: s.album ?? "",
       writers: s.writers ?? "",
+      emotions: s.emotions ?? {},
     }));
     console.log(`Loaded ${songs!.length} songs into memory`);
   }

@@ -22,6 +22,12 @@ export async function semanticSearch(
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
   }
+  // Emotion filters (e.g. "sad" → emotions.sadness >= 0.3)
+  for (const mood of parsed.filters.moods) {
+    if (mood.min !== undefined) {
+      must.push({ key: mood.key, range: { gte: mood.min } });
+    }
+  }
   const filter = must.length > 0 ? { must } : undefined;
 
   // semanticText always has content now (parser doesn't consume words)

@@ -92,8 +92,7 @@ print(f"  Collection '{COLLECTION_NAME}' created (size={VECTOR_SIZE}, distance=C
 # 5. Build and upload points in batches of BATCH_SIZE
 # ---------------------------------------------------------------------------
 def build_payload(song: dict) -> dict:
-    """Flatten song dict into a Qdrant payload, truncating lyrics."""
-    scores = song.get("scores", {})
+    """Build Qdrant payload from song dict."""
     payload = {
         "title": song.get("title"),
         "artist": song.get("artist"),
@@ -101,16 +100,14 @@ def build_payload(song: dict) -> dict:
         "decade": song.get("decade"),
         "genre": song.get("genre"),
         "chart_position": song.get("chart_position"),
-        "topic": song.get("topic"),
         "lyrics": (song.get("lyrics") or "")[:LYRICS_MAX_CHARS],
-        "valence": song.get("valence"),
-        "energy": song.get("energy"),
-        "danceability": song.get("danceability"),
-        "acousticness": song.get("acousticness"),
+        "album": song.get("album", ""),
+        "writers": song.get("writers", ""),
     }
-    # Flatten score fields to top level
-    for key in SCORE_KEYS:
-        payload[key] = scores.get(key)
+    # Include emotions as nested object (Qdrant supports nested field filtering)
+    emotions = song.get("emotions")
+    if emotions:
+        payload["emotions"] = emotions
     return payload
 
 
@@ -171,7 +168,7 @@ print("  Top 5 results:")
 for hit in results.points:
     print(
         f"    id={hit.id:3d}  score={hit.score:.4f}  "
-        f"{hit.payload['title']} — {hit.payload['artist']}  [{hit.payload['topic']}]"
+        f"{hit.payload['title']} — {hit.payload['artist']}  [{hit.payload.get('genre', '?')}]"
     )
 
 print("\nDone. Qdrant index built successfully.")

@@ -36,24 +36,22 @@ interface FeatureSpec {
   max?: number;
 }
 
-// Keys match the abbreviated score fields in Song.scores
+// Keys map to Qdrant payload fields under emotions.*
 const MOOD_MAP: Record<string, FeatureSpec> = {
-  sad:         { key: "sa", label: "sadness",    min: 0.25 },
-  sadness:     { key: "sa", label: "sadness",    min: 0.25 },
-  heartbreak:  { key: "sa", label: "sadness",    min: 0.2  },
-  heartbroken: { key: "sa", label: "sadness",    min: 0.2  },
-  lonely:      { key: "sa", label: "sadness",    min: 0.2  },
-  melancholy:  { key: "sa", label: "sadness",    min: 0.2  },
-  romantic:    { key: "ro", label: "romantic",   min: 0.2  },
-  romance:     { key: "ro", label: "romantic",   min: 0.2  },
-  intense:     { key: "vi", label: "intensity",  min: 0.2  },
-  intensity:   { key: "vi", label: "intensity",  min: 0.2  },
-  forceful:    { key: "vi", label: "intensity",  min: 0.15 },
-  heated:      { key: "vi", label: "intensity",  min: 0.15 },
-  mature:      { key: "ob", label: "mature",     min: 0.2  },
-  explicit_content: { key: "ob", label: "mature",     min: 0.15 },
-  dark:        { key: "nt", label: "night/time", min: 0.15 },
-  emotional:   { key: "fe", label: "feelings",   min: 0.15 },
+  sad:         { key: "emotions.sadness",  label: "sadness",  min: 0.3 },
+  sadness:     { key: "emotions.sadness",  label: "sadness",  min: 0.3 },
+  heartbreak:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  heartbroken: { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  lonely:      { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  melancholy:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  happy:       { key: "emotions.joy",      label: "joy",      min: 0.3 },
+  joyful:      { key: "emotions.joy",      label: "joy",      min: 0.3 },
+  cheerful:    { key: "emotions.joy",      label: "joy",      min: 0.25 },
+  angry:       { key: "emotions.anger",    label: "anger",    min: 0.3 },
+  intense:     { key: "emotions.anger",    label: "anger",    min: 0.25 },
+  scary:       { key: "emotions.fear",     label: "fear",     min: 0.3 },
+  dark:        { key: "emotions.fear",     label: "fear",     min: 0.25 },
+  surprising:  { key: "emotions.surprise", label: "surprise", min: 0.25 },
 };
 
 const AUDIO_MAP: Record<string, FeatureSpec> = {

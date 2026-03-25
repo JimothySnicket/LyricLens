@@ -11,6 +11,7 @@ export interface Song {
   lyrics: string;
   album: string;
   writers: string;
+  emotions: Record<string, number>;
 }
 
 export interface SearchResult {

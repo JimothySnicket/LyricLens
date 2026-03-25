@@ -21,6 +21,11 @@ export async function hybridSearch(
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
   }
+  for (const mood of parsed.filters.moods) {
+    if (mood.min !== undefined) {
+      must.push({ key: mood.key, range: { gte: mood.min } });
+    }
+  }
   const filter = must.length > 0 ? { must } : undefined;
 
   // Count filtered pool
