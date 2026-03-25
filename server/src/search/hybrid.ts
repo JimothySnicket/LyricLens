@@ -1,6 +1,7 @@
 import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
 import { embedQuery } from "../lib/embedder";
 import { payloadToSong, buildMatchReason } from "./utils";
+import { GENRE_TO_QDRANT } from "../lib/nlp-helpers";
 import type { ParsedQuery, SearchResult } from "../lib/types";
 
 export async function hybridSearch(
@@ -15,8 +16,16 @@ export async function hybridSearch(
   if (parsed.filters.decades.length > 0) {
     must.push({ key: "decade", match: { any: parsed.filters.decades } });
   }
-  for (const genre of parsed.filters.genres) {
-    must.push({ key: "genre", match: { text: genre } });
+  if (parsed.filters.genres.length === 1) {
+    const g = GENRE_TO_QDRANT[parsed.filters.genres[0]] ?? parsed.filters.genres[0];
+    must.push({ key: "genre", match: { text: g } });
+  } else if (parsed.filters.genres.length > 1) {
+    must.push({
+      should: parsed.filters.genres.map(g => ({
+        key: "genre",
+        match: { text: GENRE_TO_QDRANT[g] ?? g },
+      })),
+    });
   }
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });

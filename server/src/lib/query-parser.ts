@@ -1,9 +1,9 @@
 import type { ParsedQuery } from "./types";
+import { extractDecades, extractArtist, extractGenres } from "./nlp-helpers";
 
 // ---------------------------------------------------------------------------
-// Lookup tables (ported from v1)
+// Stop words — stripped from keyword terms (not from semanticText)
 // ---------------------------------------------------------------------------
-
 const STOP_WORDS = new Set([
   "songs", "song", "with", "the", "a", "an", "and", "or", "that", "this",
   "are", "is", "was", "were", "been", "be", "have", "has", "had", "do",
@@ -18,37 +18,14 @@ const STOP_WORDS = new Set([
   "classics", "find", "show", "get", "list", "give", "sung", "performed",
   "featuring", "feat", "ft", "named", "by", "from", "title", "titles",
   "lyrics", "chorus", "verse", "artist", "called", "titled",
+  "something", "anything", "nothing", "kinda", "kind", "like", "think",
+  "maybe", "probably", "know", "want", "need", "looking", "search",
+  "music", "sounds", "sounding", "style", "type", "sorta", "bit",
 ]);
 
-// All genre words that appear in our dataset — used for filter detection
-const GENRE_SET = new Set([
-  "pop", "rock", "jazz", "blues", "country", "reggae", "soul", "funk",
-  "disco", "hip-hop", "r&b", "electronic", "folk", "punk", "metal",
-  "alternative", "indie", "grunge", "latin", "reggaeton", "ska",
-  "gospel", "classical", "dance", "synth-pop", "k-pop", "afrobeats",
-  "neo-soul", "doo-wop", "glam", "garage", "progressive", "trap",
-  "salsa", "exotica", "instrumental", "orchestral", "choral",
-]);
-
-// Multi-word genre phrases
-const GENRE_ALIASES: Record<string, string> = {
-  "hip hop": "hip-hop",
-  "r and b": "r&b",
-  "hard rock": "rock",
-  "soft rock": "rock",
-  "art rock": "rock",
-  "arena rock": "rock",
-  "punk rock": "punk",
-  "pop rock": "rock",
-  "folk rock": "folk",
-  "country rock": "country",
-  "blues rock": "blues",
-  "new wave": "alternative",
-  "boy band": "pop",
-  "girl group": "pop",
-  "drum and bass": "electronic",
-};
-
+// ---------------------------------------------------------------------------
+// Mood map — maps natural language mood words to Qdrant emotion filters
+// ---------------------------------------------------------------------------
 interface FeatureSpec {
   key: string;
   label: string;
@@ -56,67 +33,71 @@ interface FeatureSpec {
   max?: number;
 }
 
-// Keys map to Qdrant payload fields under emotions.*
 const MOOD_MAP: Record<string, FeatureSpec> = {
   // Sadness
-  sad:         { key: "emotions.sadness",  label: "sadness",  min: 0.3 },
-  sadness:     { key: "emotions.sadness",  label: "sadness",  min: 0.3 },
-  heartbreak:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
-  heartbroken: { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
-  lonely:      { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
-  melancholy:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
-  mellow:      { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
-  moody:       { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
-  somber:      { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
-  bittersweet: { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
-  nostalgic:   { key: "emotions.sadness",  label: "sadness",  min: 0.15 },
-  wistful:     { key: "emotions.sadness",  label: "sadness",  min: 0.15 },
+  sad: { key: "emotions.sadness", label: "sadness", min: 0.3 },
+  sadness: { key: "emotions.sadness", label: "sadness", min: 0.3 },
+  heartbreak: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  heartbroken: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  lonely: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  melancholy: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  mellow: { key: "emotions.sadness", label: "sadness", min: 0.2 },
+  moody: { key: "emotions.sadness", label: "sadness", min: 0.2 },
+  somber: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  bittersweet: { key: "emotions.sadness", label: "sadness", min: 0.2 },
+  nostalgic: { key: "emotions.sadness", label: "sadness", min: 0.15 },
+  wistful: { key: "emotions.sadness", label: "sadness", min: 0.15 },
+  emotional: { key: "emotions.sadness", label: "sadness", min: 0.2 },
+  cry: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  crying: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  tearful: { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  romantic: { key: "emotions.joy", label: "joy", min: 0.15 },
+  chill: { key: "emotions.joy", label: "joy", min: 0.15 },
+  relax: { key: "emotions.joy", label: "joy", min: 0.15 },
+  relaxing: { key: "emotions.joy", label: "joy", min: 0.15 },
+  peaceful: { key: "emotions.joy", label: "joy", min: 0.15 },
+  soothing: { key: "emotions.joy", label: "joy", min: 0.15 },
   // Joy
-  happy:       { key: "emotions.joy",      label: "joy",      min: 0.3 },
-  joyful:      { key: "emotions.joy",      label: "joy",      min: 0.3 },
-  cheerful:    { key: "emotions.joy",      label: "joy",      min: 0.25 },
-  upbeat:      { key: "emotions.joy",      label: "joy",      min: 0.25 },
-  fun:         { key: "emotions.joy",      label: "joy",      min: 0.2 },
-  playful:     { key: "emotions.joy",      label: "joy",      min: 0.2 },
-  euphoric:    { key: "emotions.joy",      label: "joy",      min: 0.3 },
-  feelgood:    { key: "emotions.joy",      label: "joy",      min: 0.2 },
+  happy: { key: "emotions.joy", label: "joy", min: 0.3 },
+  joyful: { key: "emotions.joy", label: "joy", min: 0.3 },
+  cheerful: { key: "emotions.joy", label: "joy", min: 0.25 },
+  upbeat: { key: "emotions.joy", label: "joy", min: 0.25 },
+  fun: { key: "emotions.joy", label: "joy", min: 0.2 },
+  playful: { key: "emotions.joy", label: "joy", min: 0.2 },
+  euphoric: { key: "emotions.joy", label: "joy", min: 0.3 },
+  celebratory: { key: "emotions.joy", label: "joy", min: 0.25 },
   // Anger
-  angry:       { key: "emotions.anger",    label: "anger",    min: 0.3 },
-  intense:     { key: "emotions.anger",    label: "anger",    min: 0.25 },
-  aggressive:  { key: "emotions.anger",    label: "anger",    min: 0.25 },
-  furious:     { key: "emotions.anger",    label: "anger",    min: 0.3 },
-  rebellious:  { key: "emotions.anger",    label: "anger",    min: 0.2 },
+  angry: { key: "emotions.anger", label: "anger", min: 0.3 },
+  intense: { key: "emotions.anger", label: "anger", min: 0.25 },
+  aggressive: { key: "emotions.anger", label: "anger", min: 0.25 },
+  furious: { key: "emotions.anger", label: "anger", min: 0.3 },
+  rebellious: { key: "emotions.anger", label: "anger", min: 0.2 },
+  loud: { key: "emotions.anger", label: "anger", min: 0.2 },
   // Fear
-  scary:       { key: "emotions.fear",     label: "fear",     min: 0.3 },
-  dark:        { key: "emotions.fear",     label: "fear",     min: 0.25 },
-  eerie:       { key: "emotions.fear",     label: "fear",     min: 0.2 },
-  haunting:    { key: "emotions.fear",     label: "fear",     min: 0.2 },
-  creepy:      { key: "emotions.fear",     label: "fear",     min: 0.25 },
+  scary: { key: "emotions.fear", label: "fear", min: 0.3 },
+  dark: { key: "emotions.fear", label: "fear", min: 0.25 },
+  eerie: { key: "emotions.fear", label: "fear", min: 0.2 },
+  haunting: { key: "emotions.fear", label: "fear", min: 0.2 },
+  creepy: { key: "emotions.fear", label: "fear", min: 0.25 },
   // Surprise
-  surprising:  { key: "emotions.surprise", label: "surprise", min: 0.25 },
+  surprising: { key: "emotions.surprise", label: "surprise", min: 0.25 },
 };
 
-// No audio feature fields in current dataset — AUDIO_MAP is empty.
-const AUDIO_MAP: Record<string, FeatureSpec> = {};
-
-// Multi-word mood phrases — checked before single-word tokenization
+// Multi-word mood phrases
 const MULTI_WORD_MOODS: Record<string, FeatureSpec> = {
-  "feel good":    { key: "emotions.joy",      label: "joy",      min: 0.2 },
-  "feel-good":    { key: "emotions.joy",      label: "joy",      min: 0.2 },
-  "broken heart": { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  "feel good": { key: "emotions.joy", label: "joy", min: 0.2 },
+  "feel-good": { key: "emotions.joy", label: "joy", min: 0.2 },
+  "broken heart": { key: "emotions.sadness", label: "sadness", min: 0.25 },
   "broken hearted": { key: "emotions.sadness", label: "sadness", min: 0.25 },
+  "road trip": { key: "emotions.joy", label: "joy", min: 0.15 },
+  "party anthem": { key: "emotions.joy", label: "joy", min: 0.2 },
 };
 
-// Multi-word audio phrases sorted longest-first so they are matched before
-// their constituent single words.
-const MULTI_WORD_AUDIO = Object.keys(AUDIO_MAP)
-  .filter(k => k.includes(" "))
-  .sort((a, b) => b.length - a.length);
-
-// Multi-word genre aliases sorted longest-first.
-const MULTI_WORD_GENRE_ALIASES = Object.keys(GENRE_ALIASES)
-  .filter(k => k.includes(" "))
-  .sort((a, b) => b.length - a.length);
+// All known filter words (for stripping from artist hints)
+const ALL_FILTER_WORDS = new Set([
+  ...Object.keys(MOOD_MAP),
+  ...Object.keys(MULTI_WORD_MOODS),
+]);
 
 // ---------------------------------------------------------------------------
 // Main parser
@@ -141,231 +122,85 @@ export function parseQuery(raw: string): ParsedQuery {
 
   if (!raw || !raw.trim()) return result;
 
-  // Work on a lower-cased mutable string for sequential extraction.
-  let working = raw.toLowerCase().trim();
+  const lower = raw.toLowerCase().trim();
 
-  // -------------------------------------------------------------------------
-  // 1. Artist: "by <Name>" — capture everything after "by" until end or a
-  //    known structural keyword.
-  // -------------------------------------------------------------------------
-  const artistMatch = working.match(
-    /\bby\s+([a-z][a-z0-9 '&.-]*?)(?:\s+(?:from|in the|about|in)\b|$)/,
-  );
-  if (artistMatch) {
-    const rawTokens = artistMatch[1]
-      .trim()
-      .split(/\s+/)
-      .filter(t => t.length > 0);
-    // Strip trailing tokens that are actually mood, genre, or audio keywords
-    const knownKeywords = new Set([
-      ...Object.keys(MOOD_MAP),
-      ...GENRE_SET,
-      ...Object.keys(GENRE_ALIASES),
-    ]);
-    const strippedKeywords: string[] = [];
-    while (rawTokens.length > 0 && knownKeywords.has(rawTokens[rawTokens.length - 1])) {
-      strippedKeywords.push(rawTokens.pop()!);
+  // ── 1. Decades (NLP-powered — handles "sixties", "80's", "1975", etc.) ──
+  result.filters.decades = extractDecades(lower);
+  for (const decade of result.filters.decades) {
+    result.interpretations.push({ type: "decade", label: `${decade}s` });
+  }
+
+  // ── 2. Artist (NLP-powered — handles "by X", "from X", name detection) ──
+  const artistTokens = extractArtist(lower);
+  if (artistTokens.length > 0) {
+    // Strip trailing mood/genre words from artist
+    while (artistTokens.length > 0 && ALL_FILTER_WORDS.has(artistTokens[artistTokens.length - 1])) {
+      artistTokens.pop();
     }
-    if (rawTokens.length > 0) {
-      result.filters.artistHint = rawTokens;
+    if (artistTokens.length > 0) {
+      result.filters.artistHint = artistTokens;
       result.scopeArtist = true;
-      result.interpretations.push({ type: "artist", label: rawTokens.join(" ") });
-    }
-    // Remove the artist clause but put stripped keywords back into working
-    working = working.replace(artistMatch[0], " ").replace(/\s{2,}/g, " ").trim();
-    if (strippedKeywords.length > 0) {
-      working = (working + " " + strippedKeywords.join(" ")).trim();
+      result.interpretations.push({ type: "artist", label: artistTokens.join(" ") });
     }
   }
 
-  // -------------------------------------------------------------------------
-  // 2. Decades: "from the 80s", "in the 1960s", "80s", "1980s", etc.
-  // -------------------------------------------------------------------------
-  // Match decade patterns: "80s", "80's", "1980s", "from the 80s"
-  const decadeRegex = /\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})'?s\b/g;
-  let decadeMatch: RegExpExecArray | null;
-  while ((decadeMatch = decadeRegex.exec(working)) !== null) {
-    const raw_num = decadeMatch[1];
-    let decade: number;
-    if (raw_num.length === 2) {
-      const prefix = parseInt(raw_num, 10) >= 20 ? 1900 : 2000;
-      decade = prefix + parseInt(raw_num, 10);
-    } else {
-      decade = Math.floor(parseInt(raw_num, 10) / 10) * 10;
-    }
-    if (!result.filters.decades.includes(decade)) {
-      result.filters.decades.push(decade);
-      result.interpretations.push({ type: "decade", label: `${decade}s` });
-    }
+  // ── 3. Genres (fuzzy match against known genre words) ──
+  result.filters.genres = extractGenres(lower);
+  for (const genre of result.filters.genres) {
+    result.interpretations.push({ type: "genre", label: genre });
   }
-  working = working
-    .replace(/\b(?:from\s+the\s+|in\s+the\s+)?(\d{2}|\d{4})'?s\b/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
 
-  // Match bare years: "1986", "2003" — map to decade
-  const yearRegex = /\b(19[5-9]\d|20[0-2]\d)\b/g;
-  let yearMatch: RegExpExecArray | null;
-  while ((yearMatch = yearRegex.exec(working)) !== null) {
-    const year = parseInt(yearMatch[1], 10);
-    const decade = Math.floor(year / 10) * 10;
-    if (!result.filters.decades.includes(decade)) {
-      result.filters.decades.push(decade);
-      result.interpretations.push({ type: "decade", label: `${decade}s (from ${year})` });
-    }
-  }
-  working = working
-    .replace(/\b(19[5-9]\d|20[0-2]\d)\b/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-
-  // -------------------------------------------------------------------------
-  // 3. Scope: "in the title" / "in the lyrics" / "about" (implies lyrics)
-  // -------------------------------------------------------------------------
-  if (/\bin\s+the\s+title\b/.test(working)) {
+  // ── 4. Scope detection ──
+  if (/\bin\s+the\s+title\b/.test(lower)) {
     result.scopeTitle = true;
-    working = working.replace(/\bin\s+the\s+title\b/, " ").replace(/\s{2,}/g, " ").trim();
     result.interpretations.push({ type: "scope", label: "title" });
   }
-  if (/\bin\s+the\s+lyrics\b/.test(working)) {
+  if (/\bin\s+the\s+lyrics\b/.test(lower) || /\babout\b/.test(lower)) {
     result.scopeLyrics = true;
-    working = working.replace(/\bin\s+the\s+lyrics\b/, " ").replace(/\s{2,}/g, " ").trim();
-    result.interpretations.push({ type: "scope", label: "lyrics" });
-  }
-  if (/\babout\b/.test(working)) {
-    result.scopeLyrics = true;
-    // "about" is a structural word — strip it but keep what follows.
-    working = working.replace(/\babout\b/g, " ").replace(/\s{2,}/g, " ").trim();
   }
 
-  // -------------------------------------------------------------------------
-  // 4. Multi-word genre aliases (e.g. "hip hop", "r and b")
-  // -------------------------------------------------------------------------
-  for (const alias of MULTI_WORD_GENRE_ALIASES) {
-    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`\\b${escaped}\\b`, "g");
-    if (re.test(working)) {
-      const mapped = GENRE_ALIASES[alias];
-      if (!result.filters.genres.includes(mapped)) {
-        result.filters.genres.push(mapped);
-        result.interpretations.push({ type: "genre", label: alias });
-      }
-      working = working.replace(re, " ").replace(/\s{2,}/g, " ").trim();
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // 5. Multi-word audio features (e.g. "high energy", "low energy")
-  // -------------------------------------------------------------------------
-  for (const phrase of MULTI_WORD_AUDIO) {
-    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`\\b${escaped}\\b`, "g");
-    if (re.test(working)) {
-      const spec = AUDIO_MAP[phrase];
-      const alreadyKeyed = result.filters.audioFeatures.some(f => f.key === spec.key && f.label === spec.label);
-      if (!alreadyKeyed) {
-        result.filters.audioFeatures.push({ ...spec });
-        result.interpretations.push({ type: "audio", label: spec.label });
-      }
-      working = working.replace(re, " ").replace(/\s{2,}/g, " ").trim();
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // 5b. Multi-word mood phrases (e.g. "feel good", "broken heart")
-  // -------------------------------------------------------------------------
+  // ── 5. Moods — multi-word first, then single-word ──
+  let working = lower;
   for (const [phrase, spec] of Object.entries(MULTI_WORD_MOODS)) {
-    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`\\b${escaped}\\b`, "g");
-    if (re.test(working)) {
+    if (working.includes(phrase)) {
       const alreadyKeyed = result.filters.moods.some(m => m.key === spec.key);
       if (!alreadyKeyed) {
         result.filters.moods.push({ ...spec });
         result.interpretations.push({ type: "mood", label: spec.label });
       }
-      working = working.replace(re, " ").replace(/\s{2,}/g, " ").trim();
     }
   }
 
-  // -------------------------------------------------------------------------
-  // 6. Tokenise the remaining working string for single-word matching.
-  //    We'll process tokens, marking consumed positions.
-  // -------------------------------------------------------------------------
-  const tokens = working.split(/\s+/).filter(t => t.length > 0);
-  const consumed = new Array<boolean>(tokens.length).fill(false);
-
-  // Single-word genre set
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (consumed[i]) continue;
-    if (GENRE_SET.has(t)) {
-      if (!result.filters.genres.includes(t)) {
-        result.filters.genres.push(t);
-        result.interpretations.push({ type: "genre", label: t });
-      }
-      consumed[i] = true;
-    }
-  }
-
-  // Single-word genre aliases (single-token ones like "rap", "r&b")
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (consumed[i]) continue;
-    if (GENRE_ALIASES[t] !== undefined) {
-      const mapped = GENRE_ALIASES[t];
-      if (!result.filters.genres.includes(mapped)) {
-        result.filters.genres.push(mapped);
-        result.interpretations.push({ type: "genre", label: t });
-      }
-      consumed[i] = true;
-    }
-  }
-
-  // Mood words
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (consumed[i]) continue;
-    if (MOOD_MAP[t] !== undefined) {
-      const spec = MOOD_MAP[t];
+  const words = working.split(/\s+/).filter(w => w.length > 0);
+  for (const word of words) {
+    const clean = word.replace(/[^a-z-]/g, "");
+    if (MOOD_MAP[clean]) {
+      const spec = MOOD_MAP[clean];
       const alreadyKeyed = result.filters.moods.some(m => m.key === spec.key);
       if (!alreadyKeyed) {
         result.filters.moods.push({ ...spec });
         result.interpretations.push({ type: "mood", label: spec.label });
       }
-      consumed[i] = true;
     }
   }
 
-  // Single-word audio features
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (consumed[i]) continue;
-    if (AUDIO_MAP[t] !== undefined) {
-      const spec = AUDIO_MAP[t];
-      const alreadyKeyed = result.filters.audioFeatures.some(
-        f => f.key === spec.key && f.label === spec.label,
-      );
-      if (!alreadyKeyed) {
-        result.filters.audioFeatures.push({ ...spec });
-        result.interpretations.push({ type: "audio", label: spec.label });
-      }
-      consumed[i] = true;
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // 7. Remaining tokens: filter stop words → terms (for keyword matching)
-  // -------------------------------------------------------------------------
-  const remaining = tokens.filter((t, i) => !consumed[i]);
-  const meaningful = remaining.filter(t => !STOP_WORDS.has(t) && t.length > 1);
-
+  // ── 6. Terms — for keyword matching (stop words removed) ──
+  const allWords = lower.split(/\s+/).filter(w => w.length > 1);
+  const meaningful = allWords.filter(w => {
+    const clean = w.replace(/[^a-z-]/g, "");
+    return clean.length > 1
+      && !STOP_WORDS.has(clean)
+      && !MOOD_MAP[clean]
+      && !result.filters.genres.includes(clean);
+  });
   result.terms = meaningful;
 
-  // semanticText = ALL meaningful words from the original query, not just
-  // unconsumed ones. A word can be both a filter trigger AND carry semantic
-  // meaning. "sad rock" should embed as "sad rock", not "".
+  // ── 7. Semantic text — ALL meaningful words from original query ──
   const rawTokens = raw.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-  const allMeaningful = rawTokens.filter(t => !STOP_WORDS.has(t) && t.length > 1);
+  const allMeaningful = rawTokens.filter(t => {
+    const clean = t.replace(/[^a-z'-]/g, "");
+    return clean.length > 1 && !STOP_WORDS.has(clean);
+  });
   result.semanticText = allMeaningful.join(" ");
 
   return result;

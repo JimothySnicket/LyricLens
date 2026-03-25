@@ -1,6 +1,7 @@
 import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
 import { embedQuery } from "../lib/embedder";
 import { payloadToSong, buildMatchReason } from "./utils";
+import { GENRE_TO_QDRANT } from "../lib/nlp-helpers";
 import type { ParsedQuery, SearchResult } from "../lib/types";
 
 export async function semanticSearch(
@@ -15,9 +16,19 @@ export async function semanticSearch(
   if (parsed.filters.decades.length > 0) {
     must.push({ key: "decade", match: { any: parsed.filters.decades } });
   }
-  // Genre uses text match (tokenized) since genres are compound like "Pop/Rock/R&B"
-  for (const genre of parsed.filters.genres) {
-    must.push({ key: "genre", match: { text: genre } });
+  // Genre uses text match — map special chars (r&b → soul) for Qdrant compatibility
+  // Multiple genres use should (OR) not must (AND)
+  if (parsed.filters.genres.length === 1) {
+    const g = GENRE_TO_QDRANT[parsed.filters.genres[0]] ?? parsed.filters.genres[0];
+    must.push({ key: "genre", match: { text: g } });
+  } else if (parsed.filters.genres.length > 1) {
+    // OR logic: at least one genre must match
+    must.push({
+      should: parsed.filters.genres.map(g => ({
+        key: "genre",
+        match: { text: GENRE_TO_QDRANT[g] ?? g },
+      })),
+    });
   }
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
