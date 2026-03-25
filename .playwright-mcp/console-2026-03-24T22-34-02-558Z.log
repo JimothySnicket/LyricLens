@@ -7,3 +7,6 @@
 [ 8248295ms] [ERROR] [vite] SyntaxError: The requested module '/src/lib/types.ts?t=1774399890723' does not provide an export named 'SCORE_LABELS' @ http://localhost:5200/@vite/client:509
 [ 8248309ms] [ERROR] [vite] Failed to reload /src/components/ResultCard.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5200/@vite/client:509
 [62753969ms] [WARNING] Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly. @ http://localhost:5200/@vite/client:509
+[73402573ms] [WARNING] Please ensure that the container has a non-static position, like 'relative', 'fixed', or 'absolute' to ensure scroll offset is calculated correctly. @ http://localhost:5200/@vite/client:509
+[76861651ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5200/src/App.tsx?t=1774468504030:0
+[76861653ms] [ERROR] [vite] Failed to reload /src/App.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5200/@vite/client:509

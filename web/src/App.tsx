@@ -1,9 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { Layout } from "./components/Layout";
-import { Search } from "./pages/Search";
-import { Visualizer } from "./pages/Visualizer";
-import { HowItWorks } from "./pages/HowItWorks";
+import { Main } from "./pages/Main";
+import { DeepDive } from "./pages/DeepDive";
 
 export function App() {
   return (
@@ -11,9 +10,8 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<Search />} />
-            <Route path="visualizer" element={<Visualizer />} />
-            <Route path="how-it-works" element={<HowItWorks />} />
+            <Route index element={<Main />} />
+            <Route path="deep-dive" element={<DeepDive />} />
           </Route>
         </Routes>
       </BrowserRouter>
