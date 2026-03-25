@@ -20,13 +20,33 @@ const STOP_WORDS = new Set([
   "lyrics", "chorus", "verse", "artist", "called", "titled",
 ]);
 
-const GENRE_SET = new Set(["pop", "rock", "jazz", "blues", "country", "reggae"]);
+// All genre words that appear in our dataset — used for filter detection
+const GENRE_SET = new Set([
+  "pop", "rock", "jazz", "blues", "country", "reggae", "soul", "funk",
+  "disco", "hip-hop", "r&b", "electronic", "folk", "punk", "metal",
+  "alternative", "indie", "grunge", "latin", "reggaeton", "ska",
+  "gospel", "classical", "dance", "synth-pop", "k-pop", "afrobeats",
+  "neo-soul", "doo-wop", "glam", "garage", "progressive", "trap",
+  "salsa", "exotica", "instrumental", "orchestral", "choral",
+]);
 
+// Multi-word genre phrases
 const GENRE_ALIASES: Record<string, string> = {
-  "hip hop": "pop",
-  "r&b": "pop",
-  "rap": "pop",
-  "r and b": "pop",
+  "hip hop": "hip-hop",
+  "r and b": "r&b",
+  "hard rock": "rock",
+  "soft rock": "rock",
+  "art rock": "rock",
+  "arena rock": "rock",
+  "punk rock": "punk",
+  "pop rock": "rock",
+  "folk rock": "folk",
+  "country rock": "country",
+  "blues rock": "blues",
+  "new wave": "alternative",
+  "boy band": "pop",
+  "girl group": "pop",
+  "drum and bass": "electronic",
 };
 
 interface FeatureSpec {
@@ -38,36 +58,35 @@ interface FeatureSpec {
 
 // Keys map to Qdrant payload fields under emotions.*
 const MOOD_MAP: Record<string, FeatureSpec> = {
+  // Sadness
   sad:         { key: "emotions.sadness",  label: "sadness",  min: 0.3 },
   sadness:     { key: "emotions.sadness",  label: "sadness",  min: 0.3 },
   heartbreak:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
   heartbroken: { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
   lonely:      { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
   melancholy:  { key: "emotions.sadness",  label: "sadness",  min: 0.25 },
+  mellow:      { key: "emotions.sadness",  label: "sadness",  min: 0.2 },
+  // Joy
   happy:       { key: "emotions.joy",      label: "joy",      min: 0.3 },
   joyful:      { key: "emotions.joy",      label: "joy",      min: 0.3 },
   cheerful:    { key: "emotions.joy",      label: "joy",      min: 0.25 },
+  upbeat:      { key: "emotions.joy",      label: "joy",      min: 0.25 },
+  fun:         { key: "emotions.joy",      label: "joy",      min: 0.2 },
+  // Anger
   angry:       { key: "emotions.anger",    label: "anger",    min: 0.3 },
   intense:     { key: "emotions.anger",    label: "anger",    min: 0.25 },
+  aggressive:  { key: "emotions.anger",    label: "anger",    min: 0.25 },
+  // Fear
   scary:       { key: "emotions.fear",     label: "fear",     min: 0.3 },
   dark:        { key: "emotions.fear",     label: "fear",     min: 0.25 },
+  eerie:       { key: "emotions.fear",     label: "fear",     min: 0.2 },
+  // Surprise
   surprising:  { key: "emotions.surprise", label: "surprise", min: 0.25 },
 };
 
-const AUDIO_MAP: Record<string, FeatureSpec> = {
-  upbeat:     { key: "valence",       label: "high valence",  min: 0.5  },
-  cheerful:   { key: "valence",       label: "high valence",  min: 0.5  },
-  happy:      { key: "valence",       label: "high valence",  min: 0.45 },
-  danceable:  { key: "danceability",  label: "danceable",     min: 0.5  },
-  acoustic:   { key: "acousticness",  label: "acoustic",      min: 0.5  },
-  energetic:  { key: "energy",        label: "high energy",   min: 0.5  },
-  mellow:     { key: "energy",        label: "low energy",    max: 0.35 },
-  slow:       { key: "energy",        label: "low energy",    max: 0.35 },
-  quiet:      { key: "energy",        label: "low energy",    max: 0.3  },
-  // multi-word aliases resolved before single-word scan
-  "high energy": { key: "energy",    label: "high energy",   min: 0.5  },
-  "low energy":  { key: "energy",    label: "low energy",    max: 0.35 },
-};
+// No audio feature fields in current dataset — AUDIO_MAP is empty.
+// Mood words that could be confused with audio terms are handled in MOOD_MAP.
+const AUDIO_MAP: Record<string, FeatureSpec> = {};
 
 // Multi-word audio phrases sorted longest-first so they are matched before
 // their constituent single words.
@@ -121,20 +140,23 @@ export function parseQuery(raw: string): ParsedQuery {
     // Strip trailing tokens that are actually mood, genre, or audio keywords
     const knownKeywords = new Set([
       ...Object.keys(MOOD_MAP),
-      ...Object.keys(AUDIO_MAP),
       ...GENRE_SET,
       ...Object.keys(GENRE_ALIASES),
     ]);
+    const strippedKeywords: string[] = [];
     while (rawTokens.length > 0 && knownKeywords.has(rawTokens[rawTokens.length - 1])) {
-      rawTokens.pop();
+      strippedKeywords.push(rawTokens.pop()!);
     }
     if (rawTokens.length > 0) {
       result.filters.artistHint = rawTokens;
       result.scopeArtist = true;
       result.interpretations.push({ type: "artist", label: rawTokens.join(" ") });
     }
-    // Remove the matched artist clause from the working string.
+    // Remove the artist clause but put stripped keywords back into working
     working = working.replace(artistMatch[0], " ").replace(/\s{2,}/g, " ").trim();
+    if (strippedKeywords.length > 0) {
+      working = (working + " " + strippedKeywords.join(" ")).trim();
+    }
   }
 
   // -------------------------------------------------------------------------
