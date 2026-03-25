@@ -1,178 +1,267 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { motion, useInView } from "motion/react";
 import type { SearchMode, SearchResponse } from "../lib/types";
 import { searchAll } from "../lib/api";
 import { SearchBar } from "../components/SearchBar";
 import { QueryChips } from "../components/QueryChips";
 
 // ---------------------------------------------------------------------------
-// Section 1: Intro
+// Fade-in wrapper — triggers when element enters viewport
 // ---------------------------------------------------------------------------
-function Intro() {
+function Reveal({
+  children,
+  delay = 0,
+  className = "",
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
   return (
-    <section className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6">
-      <h1 className="text-4xl font-bold text-(--color-text) mb-4">LyricLens</h1>
-      <p className="text-lg text-(--color-text-secondary) max-w-2xl mb-8">
-        This application demonstrates different methods of RAG retrieval and the
-        relative merits of each depending on your use case — from simple keyword
-        matching to LLM-powered natural language understanding.
-      </p>
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
-      {/* Tech stack card */}
-      <div className="flex flex-wrap justify-center gap-3 mb-10">
-        {[
-          { label: "React + TypeScript", category: "frontend" },
-          { label: "Bun + Hono", category: "backend" },
-          { label: "Qdrant Cloud", category: "vector" },
-          { label: "MiniLM-L6-v2", category: "embedding" },
-          { label: "DeepSeek V3", category: "llm" },
-          { label: "2,742 songs", category: "data" },
-        ].map((item) => (
-          <span
-            key={item.label}
-            className="px-3 py-1.5 rounded-full text-xs font-medium border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary)"
+// ---------------------------------------------------------------------------
+// Section 1: Hero
+// ---------------------------------------------------------------------------
+function Hero() {
+  return (
+    <section className="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
+      {/* Subtle grid background */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+        }}
+      />
+
+      <Reveal>
+        <div className="relative">
+          <h1 className="text-5xl md:text-6xl font-bold text-(--color-text) tracking-tight mb-6">
+            Lyric<span className="text-(--color-text-secondary)">Lens</span>
+          </h1>
+          <p className="text-lg md:text-xl text-(--color-text-secondary) max-w-2xl leading-relaxed">
+            Four approaches to the same search problem.
+            <br className="hidden md:block" />
+            From keyword matching to LLM-powered understanding — see what each finds and why.
+          </p>
+        </div>
+      </Reveal>
+
+      <Reveal delay={0.2}>
+        <div className="flex flex-wrap justify-center gap-2 mt-10 mb-12">
+          {[
+            "React + TypeScript",
+            "Bun + Hono",
+            "Qdrant Cloud",
+            "MiniLM-L6-v2",
+            "DeepSeek V3",
+            "2,742 songs",
+          ].map((item) => (
+            <span
+              key={item}
+              className="px-3 py-1 rounded-full text-xs tracking-wide border border-(--color-border) text-(--color-text-tertiary)"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </Reveal>
+
+      <Reveal delay={0.4}>
+        <a
+          href="#search"
+          className="group px-8 py-3 rounded-full text-sm font-medium bg-(--color-text) text-(--color-bg) hover:opacity-90 transition-opacity"
+        >
+          Skip to Search
+          <span className="inline-block ml-2 group-hover:translate-y-0.5 transition-transform">&darr;</span>
+        </a>
+      </Reveal>
+
+      <Reveal delay={0.6} className="absolute bottom-8">
+        <div className="flex flex-col items-center gap-2 text-(--color-text-tertiary)">
+          <span className="text-[10px] uppercase tracking-[0.2em]">Scroll to explore</span>
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
           >
-            {item.label}
-          </span>
-        ))}
-      </div>
-
-      <a
-        href="#search"
-        className="px-6 py-3 rounded-[var(--radius-md)] bg-(--color-accent) text-(--color-text-inverse) text-sm font-medium hover:bg-(--color-accent-hover) transition-colors"
-      >
-        Skip to Search
-      </a>
-
-      <div className="mt-16 flex flex-col items-center gap-2 text-(--color-text-tertiary)">
-        <span className="text-xs uppercase tracking-widest">Scroll to learn how it works</span>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-bounce">
-          <path d="M5 8l5 5 5-5" />
-        </svg>
-      </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </motion.div>
+        </div>
+      </Reveal>
     </section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Section 2: How It Works — Static pipeline cards (replacing broken scroll)
+// Section 2: Pipeline Explainers
 // ---------------------------------------------------------------------------
 const PIPELINES = [
   {
     id: "keyword",
+    num: "01",
     label: "Keyword Search",
     color: "#e65100",
-    description: "Regex parser breaks the query into terms, then matches exact words against song titles, lyrics, and artist names. Fast and predictable.",
-    goodQuery: "baby in the title from the 60s",
-    goodResult: "Baby Love — The Supremes (exact title match)",
-    badQuery: "songs about heartbreak",
-    badResult: "Matches literal word 'heartbreak' only — misses songs about loss that don't use that word",
-    takeaway: "Best for: specific lookups where you know the words. Fails on concepts and vibes.",
+    what: "A regex parser breaks your query into terms, then scans every song for exact word matches in titles, lyrics, and artist names.",
+    how: ["Parse query into tokens", "Remove stop words", "Match against title, lyrics, artist", "Score by match weight + position"],
+    good: { query: "baby in the title from the 60s", result: "Baby Love — The Supremes. Exact title match, decade filter applied." },
+    bad: { query: "songs about heartbreak", result: "Only finds songs literally containing 'heartbreak'. Misses songs about loss, pain, and longing." },
+    verdict: "Fast and predictable. Best when you know the exact words.",
   },
   {
     id: "semantic",
+    num: "02",
     label: "Semantic Search",
     color: "#1565c0",
-    description: "Embeds the query with MiniLM, then finds songs whose AI-generated profile summaries are closest in meaning. Captures the vibe, not the words.",
-    goodQuery: "songs that feel like driving at night",
-    goodResult: "Self Control — Laura Branigan, I Love A Rainy Night — Eddie Rabbitt",
-    badQuery: "by Michael Jackson",
-    badResult: "Artist name isn't a 'meaning' — vector similarity to 'michael jackson' is weak without filters",
-    takeaway: "Best for: conceptual queries and moods. Fails on structured lookups (artist, decade, genre).",
+    what: "Your query is embedded into a 384-dimensional vector and compared against pre-computed song profile summaries — finding meaning, not words.",
+    how: ["Embed query with MiniLM", "Search summary vectors in Qdrant", "Rank by cosine similarity", "Return nearest neighbors"],
+    good: { query: "songs that feel like driving at night", result: "Self Control, I Love A Rainy Night. Captures the nocturnal, contemplative vibe." },
+    bad: { query: "by Michael Jackson", result: "Artist name isn't a 'meaning'. The vector for 'michael jackson' is vague without structured filters." },
+    verdict: "Captures vibes and concepts. Fails on structured lookups.",
   },
   {
     id: "hybrid",
+    num: "03",
     label: "Hybrid Search",
     color: "#6a1b9a",
-    description: "Regex parser extracts filters (decade, genre, mood, artist), then vector search ranks within the filtered pool. Keyword matches boost the score.",
-    goodQuery: "sad rock from the 80s",
-    goodResult: "Filters to 1980s rock songs with high sadness scores, then ranks by semantic similarity",
-    badQuery: "old songs about missing home",
-    badResult: "Regex parser doesn't understand 'old' as a time reference — no decade filter applied",
-    takeaway: "Best general-purpose approach. Limited by the intelligence of the regex parser.",
+    what: "The regex parser extracts structured filters (decade, genre, mood, artist), Qdrant narrows the pool, then vector similarity ranks what's left.",
+    how: ["Parse → extract filters", "Apply as Qdrant payload constraints", "Embed remaining text", "Vector search within filtered set", "Boost keyword matches"],
+    good: { query: "sad rock from the 80s", result: "Filters to 1980s rock with high sadness scores, then ranks by semantic similarity to 'sad rock'." },
+    bad: { query: "old songs about missing home", result: "'Old' isn't in the regex dictionary. No decade filter applied — returns songs from all eras." },
+    verdict: "Best general-purpose. Limited by how smart the parser is.",
   },
   {
     id: "natural",
+    num: "04",
     label: "Natural Language",
     color: "#2e7d32",
-    description: "An LLM (DeepSeek) reads the query and extracts structured intent — understanding context, slang, and relative time references that rules can't.",
-    goodQuery: "old songs about missing home",
-    goodResult: "LLM interprets 'old' → 1950s-1970s, 'missing home' → sadness + nostalgia theme",
-    goodQuery2: "something like bohemian rhapsody",
-    goodResult2: "LLM extracts: artist=Queen, genre=rock, semantic='epic rock with operatic sections'",
-    takeaway: "Handles anything natural language can express. Trade-off: ~3 second latency and API cost.",
+    what: "An LLM reads your query and extracts structured intent — understanding context, slang, and relative time references that no rule system can.",
+    how: ["Send query to DeepSeek", "LLM returns structured JSON", "Validate + fallback to regex", "Vector search with LLM-derived filters"],
+    good: { query: "old songs about missing home", result: "LLM maps 'old' → 1950s-70s, 'missing home' → sadness. Finds nostalgic classics." },
+    good2: { query: "something like bohemian rhapsody", result: "Extracts: artist=Queen, genre=rock, semantic='epic rock with operatic sections'." },
+    verdict: "Handles anything. Trade-off: ~3s latency and API cost per query.",
   },
 ];
 
-function HowItWorksSection() {
+function PipelineSection() {
   return (
-    <section className="py-20 px-4">
-      <div className="max-w-5xl mx-auto">
-        <h2 className="text-2xl font-semibold text-(--color-text) text-center mb-3">
-          Four approaches to the same problem
-        </h2>
-        <p className="text-(--color-text-secondary) text-center mb-12 max-w-2xl mx-auto">
-          Each pipeline adds a layer of intelligence. The same query produces different
-          results — and the comparison shows when each approach wins.
-        </p>
+    <section className="py-24 px-4">
+      <div className="max-w-4xl mx-auto">
+        <Reveal>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-(--color-text-tertiary) mb-3">
+            How it works
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold text-(--color-text) mb-4">
+            Four approaches,<br />same problem
+          </h2>
+          <p className="text-(--color-text-secondary) mb-16 max-w-lg">
+            Each pipeline adds a layer of intelligence. The comparison reveals when
+            each approach wins — and when it doesn't.
+          </p>
+        </Reveal>
 
-        <div className="space-y-8">
-          {PIPELINES.map((pipeline, i) => (
-            <div
-              key={pipeline.id}
-              id={`how-${pipeline.id}`}
-              className="rounded-[var(--radius-md)] border border-(--color-border) bg-(--color-surface) overflow-hidden"
-            >
-              {/* Header */}
-              <div className="px-6 py-4 flex items-center gap-3 border-b border-(--color-border)">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: pipeline.color }}
-                />
-                <h3 className="text-lg font-semibold text-(--color-text)">
-                  {i + 1}. {pipeline.label}
-                </h3>
-              </div>
-
-              <div className="px-6 py-5 space-y-4">
-                <p className="text-sm text-(--color-text-secondary) leading-relaxed">
-                  {pipeline.description}
-                </p>
-
-                {/* Examples */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Good example */}
-                  <div className="rounded-[var(--radius-sm)] border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 p-3">
-                    <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
-                      Where it shines
-                    </span>
-                    <p className="text-sm text-(--color-text) mt-1 font-mono">"{pipeline.goodQuery}"</p>
-                    <p className="text-xs text-(--color-text-secondary) mt-1">{pipeline.goodResult}</p>
-                    {"goodQuery2" in pipeline && (
-                      <>
-                        <p className="text-sm text-(--color-text) mt-2 font-mono">"{(pipeline as any).goodQuery2}"</p>
-                        <p className="text-xs text-(--color-text-secondary) mt-1">{(pipeline as any).goodResult2}</p>
-                      </>
-                    )}
+        <div className="space-y-16">
+          {PIPELINES.map((p, i) => (
+            <Reveal key={p.id} delay={i * 0.05}>
+              <div id={`how-${p.id}`} className="group">
+                {/* Header */}
+                <div className="flex items-baseline gap-4 mb-6">
+                  <span
+                    className="text-4xl font-bold opacity-20"
+                    style={{ color: p.color }}
+                  >
+                    {p.num}
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-semibold text-(--color-text)">{p.label}</h3>
+                    <p className="text-sm text-(--color-text-secondary) mt-1 max-w-xl leading-relaxed">{p.what}</p>
                   </div>
-
-                  {/* Bad example */}
-                  {"badQuery" in pipeline && pipeline.badQuery && (
-                    <div className="rounded-[var(--radius-sm)] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3">
-                      <span className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-                        Where it struggles
-                      </span>
-                      <p className="text-sm text-(--color-text) mt-1 font-mono">"{pipeline.badQuery}"</p>
-                      <p className="text-xs text-(--color-text-secondary) mt-1">{pipeline.badResult}</p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Takeaway */}
-                <p className="text-xs text-(--color-text-tertiary) italic">
-                  {pipeline.takeaway}
+                {/* Pipeline steps */}
+                <div className="flex flex-wrap gap-2 mb-6 ml-16">
+                  {p.how.map((step, si) => (
+                    <motion.div
+                      key={si}
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: si * 0.1, duration: 0.4 }}
+                      className="flex items-center gap-2"
+                    >
+                      <span
+                        className="text-[10px] px-2.5 py-1 rounded-full border"
+                        style={{ borderColor: p.color + "40", color: p.color }}
+                      >
+                        {step}
+                      </span>
+                      {si < p.how.length - 1 && (
+                        <span className="text-(--color-text-tertiary) text-xs">&rarr;</span>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Examples */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-16">
+                  {/* Good */}
+                  <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      <span className="text-[10px] uppercase tracking-wider text-green-500 font-medium">Strength</span>
+                    </div>
+                    <p className="text-sm text-(--color-text) font-mono mb-1.5">"{p.good.query}"</p>
+                    <p className="text-xs text-(--color-text-tertiary) leading-relaxed">{p.good.result}</p>
+                  </div>
+
+                  {/* Good 2 or Bad */}
+                  {"good2" in p ? (
+                    <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <span className="text-[10px] uppercase tracking-wider text-green-500 font-medium">Strength</span>
+                      </div>
+                      <p className="text-sm text-(--color-text) font-mono mb-1.5">"{(p as any).good2.query}"</p>
+                      <p className="text-xs text-(--color-text-tertiary) leading-relaxed">{(p as any).good2.result}</p>
+                    </div>
+                  ) : "bad" in p ? (
+                    <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                        <span className="text-[10px] uppercase tracking-wider text-red-400 font-medium">Limitation</span>
+                      </div>
+                      <p className="text-sm text-(--color-text) font-mono mb-1.5">"{(p as any).bad.query}"</p>
+                      <p className="text-xs text-(--color-text-tertiary) leading-relaxed">{(p as any).bad.result}</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Verdict */}
+                <p className="text-xs text-(--color-text-tertiary) mt-4 ml-16 italic">
+                  {p.verdict}
                 </p>
+
+                {/* Divider */}
+                {i < PIPELINES.length - 1 && (
+                  <div className="mt-16 border-t border-(--color-border) opacity-30" />
+                )}
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -183,13 +272,12 @@ function HowItWorksSection() {
 // ---------------------------------------------------------------------------
 // Section 3: Search
 // ---------------------------------------------------------------------------
-const MODE_INFO: Record<SearchMode, { label: string; description: string; color: string }> = {
-  keyword: { label: "Keyword", description: "Regex parser + exact word matching", color: "#e65100" },
-  semantic: { label: "Semantic", description: "Regex parser + vector similarity", color: "#1565c0" },
-  hybrid: { label: "Hybrid", description: "Regex parser + filters + vector + keyword boost", color: "#6a1b9a" },
-  natural: { label: "Natural Language", description: "LLM parses query + vector similarity", color: "#2e7d32" },
+const MODE_META: Record<SearchMode, { label: string; desc: string; color: string }> = {
+  keyword: { label: "Keyword", desc: "Regex + exact matching", color: "#e65100" },
+  semantic: { label: "Semantic", desc: "Vector similarity", color: "#1565c0" },
+  hybrid: { label: "Hybrid", desc: "Filters + vectors", color: "#6a1b9a" },
+  natural: { label: "Natural Language", desc: "LLM + vectors", color: "#2e7d32" },
 };
-
 const MODES: SearchMode[] = ["keyword", "semantic", "hybrid", "natural"];
 
 function SearchSection() {
@@ -197,7 +285,7 @@ function SearchSection() {
   const [results, setResults] = useState<Record<SearchMode, SearchResponse> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -206,12 +294,11 @@ function SearchSection() {
     setQuery(q);
     setLoading(true);
     setError(null);
-    setExpandedCards(new Set());
+    setExpanded(new Set());
     setSummary(null);
     try {
       const res = await searchAll(q);
       setResults(res);
-      // Trigger agentic summary
       fetchSummary(q, res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
@@ -224,17 +311,12 @@ function SearchSection() {
   async function fetchSummary(q: string, res: Record<SearchMode, SearchResponse>) {
     setSummaryLoading(true);
     try {
-      // Build top 3 from each mode
-      const modeResults = MODES.map((mode) => ({
-        mode,
-        songs: (res[mode]?.results ?? []).slice(0, 3).map((r) => ({
-          title: r.song.title,
-          artist: r.song.artist,
-          year: r.song.year,
-          genre: r.song.genre,
+      const modeResults = MODES.map((m) => ({
+        mode: m,
+        songs: (res[m]?.results ?? []).slice(0, 3).map((r) => ({
+          title: r.song.title, artist: r.song.artist, year: r.song.year, genre: r.song.genre,
         })),
       }));
-
       const resp = await fetch("/api/rag/compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -244,72 +326,79 @@ function SearchSection() {
         const data = await resp.json();
         setSummary(data.summary);
       }
-    } catch {
-      // Silent fail — summary is optional
-    } finally {
+    } catch { /* silent */ } finally {
       setSummaryLoading(false);
     }
   }
 
-  function toggleCard(id: string) {
-    setExpandedCards((prev) => {
+  function toggle(id: string) {
+    setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
 
   const hasResults = results !== null;
-  const parsedQuery = results?.keyword?.parsedQuery ?? results?.semantic?.parsedQuery;
+  const parsed = results?.keyword?.parsedQuery ?? results?.semantic?.parsedQuery;
 
   return (
-    <section id="search" className="py-16 px-4">
+    <section id="search" className="py-24 px-4 border-t border-(--color-border)">
       <div className="max-w-[1800px] mx-auto">
-        <h2 className="text-2xl font-semibold text-(--color-text) text-center mb-2">
-          Try it yourself
-        </h2>
-        <p className="text-(--color-text-secondary) text-center mb-8 text-sm">
-          Type a query and see how all four approaches handle it side by side.
-        </p>
+        <Reveal>
+          <div className="text-center mb-10">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-(--color-text-tertiary) mb-3">
+              Try it yourself
+            </p>
+            <h2 className="text-3xl font-bold text-(--color-text) mb-2">
+              Search four ways
+            </h2>
+            <p className="text-sm text-(--color-text-secondary)">
+              Same query, four pipelines, side by side.
+            </p>
+          </div>
+        </Reveal>
 
         {/* Search bar */}
-        <div className="max-w-2xl mx-auto mb-6">
+        <div className="max-w-2xl mx-auto mb-8">
           <SearchBar onSearch={handleSearch} initialQuery={query} />
         </div>
 
         {/* Loading */}
         {loading && (
-          <div className="py-16 flex items-center justify-center gap-3">
-            <div className="w-4 h-4 rounded-full border-2 border-(--color-border) border-t-(--color-accent) animate-spin" />
-            <span className="text-sm text-(--color-text-secondary)">Searching all four modes…</span>
+          <div className="py-20 flex items-center justify-center gap-3">
+            <div className="w-4 h-4 rounded-full border-2 border-(--color-border) border-t-(--color-text) animate-spin" />
+            <span className="text-sm text-(--color-text-tertiary)">Searching all four pipelines…</span>
           </div>
         )}
 
         {/* Error */}
         {!loading && error && (
-          <div className="max-w-2xl mx-auto rounded-[var(--radius-md)] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 px-4 py-3 mb-6">
-            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          <div className="max-w-2xl mx-auto rounded-lg border border-red-800 bg-red-950/30 px-4 py-3 mb-6">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         )}
 
-        {/* Parsed query chips */}
-        {!loading && parsedQuery && (
-          <div className="max-w-2xl mx-auto mb-4">
-            <QueryChips interpretations={parsedQuery.interpretations} />
+        {/* Query interpretation */}
+        {!loading && parsed && (
+          <div className="max-w-2xl mx-auto mb-6">
+            <QueryChips interpretations={parsed.interpretations} />
           </div>
         )}
 
         {/* Agentic summary */}
         {!loading && hasResults && (
-          <div className="max-w-3xl mx-auto mb-8">
+          <Reveal className="max-w-3xl mx-auto mb-10">
             {summaryLoading ? (
-              <div className="rounded-[var(--radius-md)] border border-(--color-border) bg-(--color-surface) px-5 py-4 text-center">
-                <span className="text-sm text-(--color-text-tertiary)">Generating comparative analysis…</span>
+              <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-6 py-5 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-3 h-3 rounded-full border border-(--color-border) border-t-(--color-text) animate-spin" />
+                  <span className="text-xs text-(--color-text-tertiary)">Generating comparative analysis…</span>
+                </div>
               </div>
             ) : summary ? (
-              <div className="rounded-[var(--radius-md)] border border-(--color-border) bg-(--color-surface) px-5 py-4">
-                <p className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wide mb-2">
+              <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-6 py-5">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-(--color-text-tertiary) mb-3">
                   Comparative Analysis
                 </p>
                 <p className="text-sm text-(--color-text-secondary) leading-relaxed">
@@ -317,51 +406,58 @@ function SearchSection() {
                 </p>
               </div>
             ) : null}
-          </div>
+          </Reveal>
         )}
 
         {/* Four columns */}
         {!loading && hasResults && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             {MODES.map((mode) => {
-              const res2 = results[mode];
-              const info = MODE_INFO[mode];
-              const count = res2?.results?.length ?? 0;
+              const r = results[mode];
+              const m = MODE_META[mode];
+              const count = r?.results?.length ?? 0;
 
               return (
-                <div key={mode} className="flex flex-col">
-                  <div className="rounded-t-[var(--radius-md)] px-4 py-3 border border-b-0 border-(--color-border) bg-(--color-surface)">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: info.color }} />
-                      <h3 className="text-sm font-semibold text-(--color-text)">{info.label}</h3>
-                      <span className="ml-auto text-xs text-(--color-text-tertiary)">{res2?.searchTimeMs ?? 0}ms</span>
-                    </div>
-                    <p className="text-xs text-(--color-text-tertiary)">{info.description}</p>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-(--color-text-tertiary)">
-                      <span>{count} results</span>
-                      {res2?.totalFiltered != null && <span>from {res2.totalFiltered} songs</span>}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 border border-t-0 border-(--color-border) rounded-b-[var(--radius-md)] overflow-hidden">
-                    {count > 0 ? (
-                      <div className="divide-y divide-(--color-border)">
-                        {res2.results.slice(0, 10).map((result, i) => (
-                          <CompactResult
-                            key={`${mode}-${result.song.id}-${i}`}
-                            result={result}
-                            rank={i + 1}
-                            modeColor={info.color}
-                            expanded={expandedCards.has(`${mode}-${result.song.id}`)}
-                            onToggle={() => toggleCard(`${mode}-${result.song.id}`)}
-                          />
-                        ))}
+                <Reveal key={mode} delay={MODES.indexOf(mode) * 0.08}>
+                  <div className="flex flex-col h-full">
+                    {/* Column header */}
+                    <div className="px-4 py-3 border border-b-0 border-(--color-border) rounded-t-lg bg-(--color-bg-secondary)">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
+                        <span className="text-sm font-semibold text-(--color-text)">{m.label}</span>
+                        <span className="ml-auto text-[10px] text-(--color-text-tertiary) font-mono">
+                          {r?.searchTimeMs ?? 0}ms
+                        </span>
                       </div>
-                    ) : (
-                      <div className="px-4 py-8 text-center text-xs text-(--color-text-tertiary)">No results</div>
-                    )}
+                      <p className="text-[10px] text-(--color-text-tertiary)">{m.desc}</p>
+                      <p className="text-[10px] text-(--color-text-tertiary) mt-1">
+                        {count} results {r?.totalFiltered != null && `from ${r.totalFiltered}`}
+                      </p>
+                    </div>
+
+                    {/* Results */}
+                    <div className="flex-1 border border-t-0 border-(--color-border) rounded-b-lg overflow-hidden">
+                      {count > 0 ? (
+                        <div className="divide-y divide-(--color-border)">
+                          {r.results.slice(0, 8).map((res, i) => (
+                            <ResultRow
+                              key={`${mode}-${res.song.id}-${i}`}
+                              result={res}
+                              rank={i + 1}
+                              color={m.color}
+                              open={expanded.has(`${mode}-${res.song.id}`)}
+                              onToggle={() => toggle(`${mode}-${res.song.id}`)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-4 py-10 text-center text-xs text-(--color-text-tertiary)">
+                          No results
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Reveal>
               );
             })}
           </div>
@@ -369,26 +465,26 @@ function SearchSection() {
 
         {/* Empty state */}
         {!loading && !hasResults && !error && (
-          <div className="max-w-2xl mx-auto pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <Reveal>
+            <div className="max-w-2xl mx-auto pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
-                { q: "old songs about missing home", why: "Natural Language understands 'old' as 1950s-70s." },
-                { q: "songs that feel like driving at night", why: "Semantic captures the vibe. Keyword can't." },
-                { q: "sad rock from the 80s", why: "Hybrid combines mood + genre + decade filters." },
-                { q: "something like bohemian rhapsody", why: "The LLM extracts artist, genre, and concept." },
-              ].map((example) => (
+                { q: "old songs about missing home", hint: "'Old' is only understood by the LLM." },
+                { q: "songs that feel like driving at night", hint: "Semantic captures vibes keyword can't." },
+                { q: "sad rock from the 80s", hint: "Hybrid combines mood + genre + decade." },
+                { q: "something like bohemian rhapsody", hint: "The LLM extracts artist, genre, and feel." },
+              ].map((ex) => (
                 <button
                   type="button"
-                  key={example.q}
-                  onClick={() => handleSearch(example.q)}
-                  className="text-left p-3 rounded-[var(--radius-md)] border border-(--color-border) bg-(--color-surface) hover:border-(--color-accent) transition-colors"
+                  key={ex.q}
+                  onClick={() => handleSearch(ex.q)}
+                  className="text-left p-4 rounded-lg border border-(--color-border) hover:border-(--color-text-tertiary) transition-colors group"
                 >
-                  <span className="font-medium text-(--color-text)">{example.q}</span>
-                  <span className="block text-xs text-(--color-text-tertiary) mt-0.5">{example.why}</span>
+                  <span className="text-sm font-medium text-(--color-text) group-hover:text-(--color-text)">{ex.q}</span>
+                  <span className="block text-xs text-(--color-text-tertiary) mt-1">{ex.hint}</span>
                 </button>
               ))}
             </div>
-          </div>
+          </Reveal>
         )}
       </div>
     </section>
@@ -396,68 +492,67 @@ function SearchSection() {
 }
 
 // ---------------------------------------------------------------------------
-// Compact Result Card
+// Result Row
 // ---------------------------------------------------------------------------
-function CompactResult({
-  result,
-  rank,
-  modeColor,
-  expanded,
-  onToggle,
+function ResultRow({
+  result, rank, color, open, onToggle,
 }: {
-  result: { song: any; score: number; matchReason: string; mode: SearchMode };
+  result: any;
   rank: number;
-  modeColor: string;
-  expanded: boolean;
+  color: string;
+  open: boolean;
   onToggle: () => void;
 }) {
   const { song, score, matchReason, mode } = result;
-  const scoreDisplay = mode === "keyword" ? score.toFixed(1) : score.toFixed(3);
+  const sc = mode === "keyword" ? score.toFixed(1) : score.toFixed(3);
 
   return (
-    <div className="bg-(--color-surface)">
+    <div>
       <button
         type="button"
         onClick={onToggle}
-        className="w-full text-left px-3 py-2.5 flex items-start gap-2.5 hover:bg-(--color-bg-secondary) transition-colors"
+        className="w-full text-left px-3 py-2.5 flex items-start gap-2 hover:bg-(--color-bg-secondary) transition-colors"
       >
-        <span className="text-xs font-mono text-(--color-text-tertiary) w-4 shrink-0 pt-0.5">{rank}</span>
-        <span
-          className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 text-white"
-          style={{ backgroundColor: modeColor }}
-        >
-          {scoreDisplay}
+        <span className="text-[10px] font-mono text-(--color-text-tertiary) w-3 shrink-0 pt-1">{rank}</span>
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-white shrink-0" style={{ backgroundColor: color }}>
+          {sc}
         </span>
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-(--color-text) truncate block">{song.title}</span>
-          <span className="text-xs text-(--color-text-secondary) block truncate">{song.artist}</span>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.genre}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.year}</span>
+          <p className="text-sm font-medium text-(--color-text) truncate">{song.title}</p>
+          <p className="text-[11px] text-(--color-text-secondary) truncate">{song.artist}</p>
+          <div className="flex gap-1 mt-1">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.genre}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.year}</span>
           </div>
         </div>
-        <span className="text-[10px] text-(--color-text-tertiary) shrink-0">{expanded ? "\u25B2" : "\u25BC"}</span>
       </button>
-      {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-(--color-border) text-xs space-y-2">
-          <p className="text-(--color-text-tertiary)">{matchReason}</p>
+      {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="px-3 pb-3 text-xs space-y-1.5 border-t border-(--color-border) overflow-hidden"
+        >
+          <p className="text-(--color-text-tertiary) pt-2">{matchReason}</p>
           {song.lyrics && (
-            <p className="text-(--color-text-secondary) leading-relaxed whitespace-pre-line line-clamp-4">{song.lyrics.slice(0, 300)}</p>
+            <p className="text-(--color-text-secondary) leading-relaxed whitespace-pre-line line-clamp-3">
+              {song.lyrics.slice(0, 250)}
+            </p>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Main page — combines all sections
+// Main
 // ---------------------------------------------------------------------------
 export function Main() {
   return (
     <div>
-      <Intro />
-      <HowItWorksSection />
+      <Hero />
+      <PipelineSection />
       <SearchSection />
     </div>
   );
