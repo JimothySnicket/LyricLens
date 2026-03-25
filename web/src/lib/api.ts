@@ -13,12 +13,13 @@ export async function search(query: string, mode: SearchMode): Promise<SearchRes
 }
 
 export async function searchAll(query: string): Promise<Record<SearchMode, SearchResponse>> {
-  const [keyword, semantic, hybrid] = await Promise.all([
+  const [keyword, semantic, hybrid, natural] = await Promise.all([
     search(query, "keyword"),
     search(query, "semantic"),
     search(query, "hybrid"),
+    search(query, "natural"),
   ]);
-  return { keyword, semantic, hybrid };
+  return { keyword, semantic, hybrid, natural };
 }
 
 export async function getFilters(): Promise<{ decades: number[]; genres: string[] }> {

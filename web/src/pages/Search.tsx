@@ -8,22 +8,27 @@ import { ResultCard } from "../components/ResultCard";
 const MODE_INFO: Record<SearchMode, { label: string; description: string; color: string }> = {
   keyword: {
     label: "Keyword",
-    description: "Matches exact words in title, lyrics, and artist name",
+    description: "Regex parser + exact word matching",
     color: "var(--color-mode-keyword, #e65100)",
   },
   semantic: {
     label: "Semantic",
-    description: "Finds songs by meaning and vibe, not matching words",
+    description: "Regex parser + vector similarity",
     color: "var(--color-mode-semantic, #1565c0)",
   },
   hybrid: {
     label: "Hybrid",
-    description: "Filters first, then ranks by meaning + keyword boost",
+    description: "Regex parser + filters + vector + keyword boost",
     color: "var(--color-mode-hybrid, #6a1b9a)",
+  },
+  natural: {
+    label: "Natural Language",
+    description: "LLM parses query + vector similarity",
+    color: "var(--color-mode-natural, #2e7d32)",
   },
 };
 
-const MODES: SearchMode[] = ["keyword", "semantic", "hybrid"];
+const MODES: SearchMode[] = ["keyword", "semantic", "hybrid", "natural"];
 
 export function Search() {
   const [query, setQuery] = useState("");
@@ -62,7 +67,7 @@ export function Search() {
   const parsedQuery = results?.keyword?.parsedQuery ?? results?.semantic?.parsedQuery;
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-8">
+    <div className="max-w-[1800px] mx-auto px-4 py-8">
       {/* Header */}
       {!hasResults && !loading && (
         <div className="text-center space-y-2 pb-4 max-w-2xl mx-auto">
@@ -82,7 +87,7 @@ export function Search() {
       {loading && (
         <div className="py-16 flex items-center justify-center gap-3">
           <div className="w-4 h-4 rounded-full border-2 border-(--color-border) border-t-(--color-accent) animate-spin" />
-          <span className="text-sm text-(--color-text-secondary)">Searching all three modes…</span>
+          <span className="text-sm text-(--color-text-secondary)">Searching all four modes…</span>
         </div>
       )}
 
@@ -102,7 +107,7 @@ export function Search() {
 
       {/* Three-column results */}
       {!loading && hasResults && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           {MODES.map((mode) => {
             const res = results[mode];
             const info = MODE_INFO[mode];
