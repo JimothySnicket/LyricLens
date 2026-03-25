@@ -15,8 +15,8 @@ export async function hybridSearch(
   if (parsed.filters.decades.length > 0) {
     must.push({ key: "decade", match: { any: parsed.filters.decades } });
   }
-  if (parsed.filters.genres.length > 0) {
-    must.push({ key: "genre", match: { any: parsed.filters.genres } });
+  for (const genre of parsed.filters.genres) {
+    must.push({ key: "genre", match: { text: genre } });
   }
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });

@@ -15,8 +15,9 @@ export async function semanticSearch(
   if (parsed.filters.decades.length > 0) {
     must.push({ key: "decade", match: { any: parsed.filters.decades } });
   }
-  if (parsed.filters.genres.length > 0) {
-    must.push({ key: "genre", match: { any: parsed.filters.genres } });
+  // Genre uses text match (tokenized) since genres are compound like "Pop/Rock/R&B"
+  for (const genre of parsed.filters.genres) {
+    must.push({ key: "genre", match: { text: genre } });
   }
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
