@@ -24,6 +24,9 @@ export function keywordSearch(
   const results: SearchResult[] = [];
 
   for (const song of songs) {
+    let score = 0;
+    const reasons: string[] = [];
+
     // Hard filters
     if (genres.length > 0) {
       const songGenre = song.genre.toLowerCase();
@@ -39,14 +42,12 @@ export function keywordSearch(
       const lowerArtist = song.artist.toLowerCase();
       const allMatch = artistHint.every((token) => lowerArtist.includes(token));
       if (!allMatch) continue;
+      score += WEIGHT_ARTIST_BASE;
     }
 
     const lowerTitle = song.title.toLowerCase();
     const lowerLyrics = song.lyrics.toLowerCase();
     const lowerArtist = song.artist.toLowerCase();
-
-    let score = 0;
-    const reasons: string[] = [];
 
     let titleTermMatches = 0;
     let lyricsTermMatches = 0;
