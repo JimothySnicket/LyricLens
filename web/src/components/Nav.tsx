@@ -1,103 +1,82 @@
-import { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router";
+import { motion } from "motion/react";
 import { useTheme } from "../theme/ThemeProvider";
 
-const HOW_IT_WORKS_SECTIONS = [
-  { id: "keyword", label: "Keyword Search" },
-  { id: "semantic", label: "Semantic Search" },
-  { id: "hybrid", label: "Hybrid Search" },
-  { id: "natural", label: "Natural Language" },
+const SECTION_LINKS = [
+  { label: "Intro", index: 0 },
+  { label: "Keyword", index: 1 },
+  { label: "Semantic", index: 2 },
+  { label: "Hybrid", index: 3 },
+  { label: "NL", index: 4 },
 ];
 
-export function Nav() {
+interface NavProps {
+  visible: boolean;
+  onNavigate: (sectionIndex: number) => void;
+}
+
+export function Nav({ visible, onNavigate }: NavProps) {
   const { theme, toggle } = useTheme();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
 
-  const isHome = location.pathname === "/";
-
-  function scrollTo(id: string) {
-    setDropdownOpen(false);
-    if (!isHome) {
-      navigate("/#" + id);
-      return;
-    }
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-  }
+  if (!visible) return null;
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-(--color-border) bg-(--color-surface)/95 backdrop-blur-sm">
-      <div className="max-w-[1800px] mx-auto px-4 flex items-center justify-between h-14">
-        <NavLink to="/" className="text-xl font-semibold text-(--color-text)">
-          LyricLens
-        </NavLink>
+    <motion.header
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="fixed top-0 left-0 right-0 z-50 border-b border-(--color-border) bg-(--color-bg)/95 backdrop-blur-sm"
+    >
+      <nav className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+        {/* Logo */}
+        <button
+          type="button"
+          onClick={() => onNavigate(0)}
+          className="text-base font-semibold text-(--color-text) bg-transparent border-none cursor-pointer"
+          style={{ fontFamily: "inherit" }}
+        >
+          Lyric<span className="text-(--color-text-secondary)">Lens</span>
+        </button>
 
+        {/* Section links */}
         <div className="flex items-center gap-6">
-          {/* How It Works dropdown */}
-          <div className="relative">
+          {SECTION_LINKS.map((link) => (
             <button
+              key={link.label}
               type="button"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
-              className="text-sm text-(--color-text-secondary) hover:text-(--color-text) transition-colors flex items-center gap-1"
+              onClick={() => onNavigate(link.index)}
+              className="text-xs text-(--color-text-tertiary) hover:text-(--color-text-secondary) transition-colors bg-transparent border-none cursor-pointer"
+              style={{ fontFamily: "inherit" }}
             >
-              How It Works
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d={dropdownOpen ? "M3 7l3-3 3 3" : "M3 5l3 3 3-3"} />
-              </svg>
+              {link.label}
             </button>
-            {dropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 rounded-[var(--radius-md)] border border-(--color-border) bg-(--color-surface) shadow-lg py-1 z-50">
-                {HOW_IT_WORKS_SECTIONS.map((section) => (
-                  <button
-                    type="button"
-                    key={section.id}
-                    onClick={() => scrollTo("how-" + section.id)}
-                    className="w-full text-left px-4 py-2 text-sm text-(--color-text-secondary) hover:bg-(--color-bg-secondary) hover:text-(--color-text) transition-colors"
-                  >
-                    {section.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Search anchor */}
-          <button
-            type="button"
-            onClick={() => scrollTo("search")}
-            className="text-sm text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
+          ))}
+          <a
+            href="/deep-dive"
+            className="text-xs text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
           >
-            Search
-          </button>
-
-          {/* Deep Dive page */}
-          <NavLink
-            to="/deep-dive"
-            className={({ isActive }) =>
-              `text-sm transition-colors ${
-                isActive
-                  ? "text-(--color-text) border-b-2 border-(--color-accent) pb-1"
-                  : "text-(--color-text-secondary) hover:text-(--color-text)"
-              }`
-            }
-          >
-            Deep Dive
-          </NavLink>
+            Deep Dive →
+          </a>
 
           {/* Theme toggle */}
           <button
             type="button"
             onClick={toggle}
-            className="text-sm text-(--color-text-secondary) hover:text-(--color-text)"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-(--color-bg-secondary) transition-colors text-(--color-text-tertiary) bg-transparent border-none cursor-pointer"
             aria-label="Toggle theme"
           >
-            {theme === "light" ? "Dark" : "Light"}
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="8" cy="8" r="3" />
+                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M13.5 8.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" />
+              </svg>
+            )}
           </button>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </motion.header>
   );
 }
