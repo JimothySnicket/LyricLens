@@ -72,8 +72,8 @@ export function SongCard({
         gap: 12,
         padding: "10px 14px",
         borderRadius: 8,
-        border: `1px solid ${isSuccess ? "rgba(22,163,74,0.3)" : "rgba(220,38,38,0.3)"}`,
-        backgroundColor: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        backgroundColor: "var(--color-bg-secondary)",
       }}
     >
       <span
