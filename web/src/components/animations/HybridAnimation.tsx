@@ -1,10 +1,9 @@
 // web/src/components/animations/HybridAnimation.tsx
 
-import { AbsoluteFill, useCurrentFrame, interpolate, Sequence } from "remotion";
+import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
 import type { ModeAnimationContent } from "./animation-content";
-import { ACT_1_END, ACT_2_END, ANIMATION_DURATION_FRAMES } from "./animation-content";
-import { QueryEntry } from "./shared/QueryEntry";
-import { ResultsReveal } from "./shared/ResultsReveal";
+import { EXPLAIN_END, QUERY_SUCCESS_END } from "./animation-content";
+import { SongCard } from "./shared/SongCard";
 
 interface Props {
   content: ModeAnimationContent;
@@ -14,200 +13,369 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
   const frame = useCurrentFrame();
   const color = `var(${content.cssVar}, ${content.fallbackColor})`;
 
-  const act2Frame = frame - ACT_1_END;
-  const act2Duration = ACT_2_END - ACT_1_END;
-
-  // Phase 1: split into filters vs semantic (0–25%)
-  const splitProgress = interpolate(act2Frame, [0, act2Duration * 0.25], [0, 1], {
+  // --- Phase timings ---
+  const explainOpacity = interpolate(frame, [0, 25], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Phase 2: filters narrow the pool (25–55%)
-  const filterProgress = interpolate(act2Frame, [act2Duration * 0.25, act2Duration * 0.55], [0, 1], {
+  // Query typewriter: 90-115
+  const queryText = content.successQuery;
+  const typeProgress = interpolate(frame, [EXPLAIN_END, EXPLAIN_END + 25], [0, queryText.length], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const visibleQuery = queryText.slice(0, Math.floor(typeProgress));
+  const queryOpacity = frame >= EXPLAIN_END ? 1 : 0;
+
+  // Words split into two groups: 115-140
+  const splitStart = EXPLAIN_END + 25;
+  const splitEnd = EXPLAIN_END + 50;
+  const splitProgress = interpolate(frame, [splitStart, splitEnd], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Phase 3: vector ranking (55–100%)
-  const rankProgress = interpolate(act2Frame, [act2Duration * 0.55, act2Duration], [0, 1], {
+  // Filter counter: 140-160
+  const counterStart = EXPLAIN_END + 50;
+  const counterEnd = EXPLAIN_END + 70;
+  const counterProgress = interpolate(frame, [counterStart, counterEnd], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Split query words into filter vs semantic
-  const words = content.query.split(/\s+/);
-  const filterWords = ["baby", "title", "60s"];
-  const semanticWords = words.filter((w) => !filterWords.includes(w.toLowerCase()) && !["in", "the", "from"].includes(w.toLowerCase()));
+  // Semantic search within filtered: 160-180
+  const semanticStart = EXPLAIN_END + 70;
+  const semanticProgress = interpolate(frame, [semanticStart, semanticStart + 20], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Success results: 180-210
+  const resultsStart = EXPLAIN_END + 90;
+
+  // Success caption
+  const captionStart = resultsStart + 20;
+  const captionOpacity = interpolate(frame, [captionStart, captionStart + 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation query: 210-235
+  const limQueryText = content.limitationQuery;
+  const limTypeProgress = interpolate(
+    frame,
+    [QUERY_SUCCESS_END, QUERY_SUCCESS_END + 25],
+    [0, limQueryText.length],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const visibleLimQuery = limQueryText.slice(0, Math.floor(limTypeProgress));
+  const limQueryOpacity = frame >= QUERY_SUCCESS_END ? 1 : 0;
+
+  // "old" flashes with "?" : 235-250
+  const ambiguousStart = QUERY_SUCCESS_END + 25;
+  const ambiguousProgress = interpolate(frame, [ambiguousStart, ambiguousStart + 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation caption
+  const limCaptionStart = ambiguousStart + 15;
+  const limCaptionOpacity = interpolate(frame, [limCaptionStart, limCaptionStart + 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const filters = content.filters ?? [];
+  const semanticRemainder = content.semanticRemainder ?? "";
+  const countBefore = content.filterCountBefore ?? 2742;
+  const countAfter = content.filterCountAfter ?? 186;
+
+  // Animated counter
+  const currentCount = Math.round(
+    interpolate(counterProgress, [0, 1], [countBefore, countAfter], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })
+  );
 
   return (
     <AbsoluteFill
       style={{
         backgroundColor: "var(--color-bg)",
         fontFamily: "var(--font-sans)",
+        padding: "28px 40px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 0,
       }}
     >
-      {/* Act 1 */}
-      <Sequence from={0} durationInFrames={ACT_1_END}>
-        <AbsoluteFill>
-          <QueryEntry query={content.query} accentColor={color} />
-        </AbsoluteFill>
-      </Sequence>
+      {/* Explanation */}
+      <div
+        style={{
+          opacity: explainOpacity,
+          textAlign: "center" as const,
+          fontSize: 14,
+          lineHeight: 1.6,
+          color: "var(--color-text-secondary)",
+          maxWidth: 560,
+          marginBottom: 16,
+        }}
+      >
+        {content.explanation}
+      </div>
 
-      {/* Act 2: Split + filter + rank */}
-      <Sequence from={ACT_1_END} durationInFrames={act2Duration}>
-        <AbsoluteFill
+      {/* Query typewriter */}
+      <div
+        style={{
+          opacity: queryOpacity,
+          textAlign: "center" as const,
+          marginBottom: 12,
+        }}
+      >
+        <span
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 24,
+            fontFamily: "var(--font-mono)",
+            fontSize: 18,
+            fontWeight: 600,
+            color: "var(--color-text)",
           }}
         >
-          {/* Pipeline steps */}
-          <div style={{ display: "flex", gap: 12 }}>
-            {content.pipelineSteps.map((step, i) => {
-              const stepActive = (act2Frame / act2Duration) > (i / content.pipelineSteps.length);
+          {visibleQuery}
+          {frame >= EXPLAIN_END && frame < splitStart && (
+            <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
+          )}
+        </span>
+      </div>
+
+      {/* Two-panel split: Filters | Meaning */}
+      {splitProgress > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 24,
+            width: "100%",
+            maxWidth: 520,
+            marginBottom: 12,
+          }}
+        >
+          {/* LEFT: Filters */}
+          <div
+            style={{
+              flex: 1,
+              padding: "14px 16px",
+              borderRadius: 8,
+              border: "1px solid var(--color-border)",
+              backgroundColor: "var(--color-surface)",
+              opacity: splitProgress,
+              transform: `translateX(${interpolate(splitProgress, [0, 1], [-16, 0])}px)`,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: 2,
+                textTransform: "uppercase" as const,
+                color: "var(--color-text-tertiary)",
+                marginBottom: 10,
+              }}
+            >
+              Filters
+            </div>
+            {filters.map((f, i) => {
+              const fOpacity = interpolate(
+                splitProgress,
+                [(i * 0.3) + 0.2, (i * 0.3) + 0.5],
+                [0, 1],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              );
               return (
                 <div
                   key={i}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 13,
+                    padding: "3px 8px",
+                    marginBottom: 4,
+                    borderRadius: 4,
+                    opacity: fOpacity,
+                    color: "var(--color-text)",
+                    backgroundColor: `color-mix(in srgb, ${content.fallbackColor} 12%, transparent)`,
                   }}
                 >
-                  <div
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 20,
-                      border: `1px solid ${color}`,
-                      fontSize: 12,
-                      color: stepActive ? "white" : color,
-                      backgroundColor: stepActive ? content.fallbackColor : "transparent",
-                    }}
-                  >
-                    {step}
-                  </div>
-                  {i < content.pipelineSteps.length - 1 && (
-                    <span style={{ color: "var(--color-text-tertiary)" }}>→</span>
-                  )}
+                  {f.label}: {f.value}
                 </div>
               );
             })}
+            {/* Counter */}
+            {counterProgress > 0 && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--color-text-tertiary)",
+                  marginTop: 8,
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {currentCount.toLocaleString()} songs
+              </div>
+            )}
           </div>
 
-          {/* Two-panel split */}
+          {/* RIGHT: Meaning */}
           <div
             style={{
-              display: "flex",
-              gap: 32,
-              width: 500,
-              justifyContent: "center",
+              flex: 1,
+              padding: "14px 16px",
+              borderRadius: 8,
+              border: "1px solid var(--color-border)",
+              backgroundColor: "var(--color-surface)",
+              opacity: splitProgress,
+              transform: `translateX(${interpolate(splitProgress, [0, 1], [16, 0])}px)`,
             }}
           >
-            {/* Left: Structured filters */}
             <div
               style={{
-                flex: 1,
-                padding: 20,
-                borderRadius: 10,
-                border: "1px solid var(--color-border)",
-                backgroundColor: "var(--color-surface)",
-                opacity: splitProgress,
-                transform: `translateX(${interpolate(splitProgress, [0, 1], [-20, 0])}px)`,
+                fontSize: 10,
+                letterSpacing: 2,
+                textTransform: "uppercase" as const,
+                color: "var(--color-text-tertiary)",
+                marginBottom: 10,
               }}
             >
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  textTransform: "uppercase" as const,
-                  color: "var(--color-text-tertiary)",
-                  marginBottom: 12,
-                }}
-              >
-                Filters extracted
-              </div>
-              {filterWords.map((w, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 14,
-                    padding: "4px 10px",
-                    marginBottom: 6,
-                    borderRadius: 4,
-                    backgroundColor: filterProgress > i / filterWords.length
-                      ? `color-mix(in srgb, ${content.fallbackColor} 15%, transparent)`
-                      : "transparent",
-                    color: "var(--color-text)",
-                  }}
-                >
-                  {w}
-                </div>
-              ))}
-              {filterProgress > 0.5 && (
-                <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 8 }}>
-                  {`2,742 → ~180 songs`}
-                </div>
-              )}
+              Meaning
             </div>
-
-            {/* Right: Semantic remainder */}
             <div
               style={{
-                flex: 1,
-                padding: 20,
-                borderRadius: 10,
-                border: "1px solid var(--color-border)",
-                backgroundColor: "var(--color-surface)",
-                opacity: splitProgress,
-                transform: `translateX(${interpolate(splitProgress, [0, 1], [20, 0])}px)`,
+                fontFamily: "var(--font-mono)",
+                fontSize: 16,
+                fontWeight: 600,
+                color: content.fallbackColor,
+                marginBottom: 6,
               }}
             >
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  textTransform: "uppercase" as const,
-                  color: "var(--color-text-tertiary)",
-                  marginBottom: 12,
-                }}
-              >
-                Semantic search
-              </div>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 14,
-                  color: "var(--color-text)",
-                  marginBottom: 12,
-                }}
-              >
-                {semanticWords.length > 0 ? semanticWords.join(" ") : "baby"}
-              </div>
-              {rankProgress > 0.3 && (
-                <div style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
-                  Vector ranking within filtered set...
-                </div>
-              )}
+              {semanticRemainder}
             </div>
+            {semanticProgress > 0.3 && (
+              <div style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                Vector ranking within {countAfter} songs...
+              </div>
+            )}
           </div>
-        </AbsoluteFill>
-      </Sequence>
+        </div>
+      )}
 
-      {/* Act 3 */}
-      <Sequence from={ACT_2_END} durationInFrames={ANIMATION_DURATION_FRAMES - ACT_2_END}>
-        <AbsoluteFill>
-          <ResultsReveal
-            results={content.results}
-            verdict={content.verdict}
-            accentColor={color}
+      {/* Success results */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 5,
+          maxWidth: 380,
+          width: "100%",
+        }}
+      >
+        {content.successResults.map((r, i) => (
+          <SongCard
+            key={`s-${i}`}
+            title={r.title}
+            artist={r.artist}
+            year={r.year}
+            status="success"
+            frame={frame}
+            appearFrame={resultsStart + i * 10}
           />
-        </AbsoluteFill>
-      </Sequence>
+        ))}
+      </div>
+
+      {/* Success caption */}
+      <div
+        style={{
+          opacity: captionOpacity,
+          textAlign: "center" as const,
+          fontSize: 12,
+          fontStyle: "italic",
+          color: "var(--color-text-tertiary)",
+          marginTop: 6,
+          marginBottom: 14,
+        }}
+      >
+        {content.successCaption}
+      </div>
+
+      {/* Limitation query */}
+      <div
+        style={{
+          opacity: limQueryOpacity,
+          textAlign: "center" as const,
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "var(--color-text)",
+          }}
+        >
+          {visibleLimQuery}
+          {frame >= QUERY_SUCCESS_END && frame < ambiguousStart && (
+            <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
+          )}
+        </span>
+      </div>
+
+      {/* Ambiguous word "old" with "?" */}
+      {content.ambiguousWord && ambiguousProgress > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 8,
+            opacity: ambiguousProgress,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#dc2626",
+              padding: "3px 10px",
+              borderRadius: 6,
+              border: "1px dashed #dc2626",
+              // Flash effect
+              opacity: ambiguousProgress > 0.5
+                ? (frame % 20 < 10 ? 1 : 0.6)
+                : ambiguousProgress,
+            }}
+          >
+            {content.ambiguousWord}
+          </span>
+          <span style={{ fontSize: 20, color: "#dc2626", fontWeight: 700 }}>?</span>
+          <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+            doesn't map to a decade
+          </span>
+        </div>
+      )}
+
+      {/* Limitation caption */}
+      <div
+        style={{
+          opacity: limCaptionOpacity,
+          textAlign: "center" as const,
+          fontSize: 12,
+          fontStyle: "italic",
+          color: "var(--color-text-tertiary)",
+          marginTop: 4,
+        }}
+      >
+        {content.limitationCaption}
+      </div>
     </AbsoluteFill>
   );
 };

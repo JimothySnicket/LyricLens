@@ -1,45 +1,111 @@
 // web/src/components/animations/SemanticAnimation.tsx
 
-import { AbsoluteFill, useCurrentFrame, interpolate, Sequence } from "remotion";
+import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
 import type { ModeAnimationContent } from "./animation-content";
-import { ACT_1_END, ACT_2_END, ANIMATION_DURATION_FRAMES } from "./animation-content";
-import { QueryEntry } from "./shared/QueryEntry";
-import { ResultsReveal } from "./shared/ResultsReveal";
+import { EXPLAIN_END, QUERY_SUCCESS_END } from "./animation-content";
+import { SongCard } from "./shared/SongCard";
 
 interface Props {
   content: ModeAnimationContent;
 }
 
-// Pseudo-random positions for song dots (deterministic)
-const SONG_DOTS = Array.from({ length: 24 }, (_, i) => ({
-  x: 80 + ((i * 137) % 440),
-  y: 60 + ((i * 97) % 280),
-  isMatch: i < 3, // first 3 are matches
+// Deterministic dot field for the "database" of songs
+const DB_DOTS = Array.from({ length: 30 }, (_, i) => ({
+  x: 40 + ((i * 137 + 29) % 420),
+  y: 20 + ((i * 97 + 13) % 160),
 }));
 
-const QUERY_POINT = { x: 300, y: 180 };
+// Positions for the matched songs (first 3 dots, placed near query)
+const MATCH_DOTS = [
+  { x: 240, y: 65 },
+  { x: 290, y: 110 },
+  { x: 200, y: 105 },
+];
+
+const QUERY_DOT = { x: 250, y: 90 };
 
 export const SemanticAnimation: React.FC<Props> = ({ content }) => {
   const frame = useCurrentFrame();
   const color = `var(${content.cssVar}, ${content.fallbackColor})`;
 
-  const act2Frame = frame - ACT_1_END;
-  const act2Duration = ACT_2_END - ACT_1_END;
-
-  // Phase 1: query text shrinks to a point (0–30% of act 2)
-  const collapseProgress = interpolate(act2Frame, [0, act2Duration * 0.3], [0, 1], {
+  // --- Phase timings ---
+  const explainOpacity = interpolate(frame, [0, 25], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Phase 2: point enters song space, proximity lines draw (30–70%)
-  const searchProgress = interpolate(act2Frame, [act2Duration * 0.3, act2Duration * 0.7], [0, 1], {
+  // Query typewriter: 90-115
+  const queryText = content.successQuery;
+  const typeProgress = interpolate(frame, [EXPLAIN_END, EXPLAIN_END + 25], [0, queryText.length], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const visibleQuery = queryText.slice(0, Math.floor(typeProgress));
+  const queryOpacity = frame >= EXPLAIN_END ? 1 : 0;
+
+  // Query contracts to a dot: 115-130
+  const contractStart = EXPLAIN_END + 25;
+  const contractEnd = EXPLAIN_END + 40;
+  const contractProgress = interpolate(frame, [contractStart, contractEnd], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Phase 3: matches highlight (70–100%)
-  const highlightProgress = interpolate(act2Frame, [act2Duration * 0.7, act2Duration], [0, 1], {
+  // Dot field appears: 130-145
+  const fieldStart = EXPLAIN_END + 40;
+  const fieldEnd = EXPLAIN_END + 55;
+  const fieldOpacity = interpolate(frame, [fieldStart, fieldEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Proximity lines + match highlights: 145-170
+  const matchStart = EXPLAIN_END + 55;
+  const matchEnd = EXPLAIN_END + 80;
+  const matchProgress = interpolate(frame, [matchStart, matchEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Success results below vector space: 170-210
+  const resultsStart = EXPLAIN_END + 80;
+
+  // Success caption
+  const captionStart = resultsStart + 30;
+  const captionOpacity = interpolate(frame, [captionStart, captionStart + 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation query: 210-230
+  const limQueryText = content.limitationQuery;
+  const limTypeProgress = interpolate(
+    frame,
+    [QUERY_SUCCESS_END, QUERY_SUCCESS_END + 20],
+    [0, limQueryText.length],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const visibleLimQuery = limQueryText.slice(0, Math.floor(limTypeProgress));
+  const limQueryOpacity = frame >= QUERY_SUCCESS_END ? 1 : 0;
+
+  // Limitation results: 230-270
+  const limResultsStart = QUERY_SUCCESS_END + 20;
+
+  // Limitation caption
+  const limCaptionStart = limResultsStart + 15;
+  const limCaptionOpacity = interpolate(frame, [limCaptionStart, limCaptionStart + 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Query text fades as it contracts
+  const queryTextOpacity = interpolate(contractProgress, [0, 0.6], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Query dot appears as contract progresses
+  const queryDotOpacity = interpolate(contractProgress, [0.3, 0.8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -49,128 +115,223 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
       style={{
         backgroundColor: "var(--color-bg)",
         fontFamily: "var(--font-sans)",
+        padding: "28px 40px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 0,
       }}
     >
-      {/* Act 1 */}
-      <Sequence from={0} durationInFrames={ACT_1_END}>
-        <AbsoluteFill>
-          <QueryEntry query={content.query} accentColor={color} />
-        </AbsoluteFill>
-      </Sequence>
+      {/* Explanation */}
+      <div
+        style={{
+          opacity: explainOpacity,
+          textAlign: "center" as const,
+          fontSize: 14,
+          lineHeight: 1.6,
+          color: "var(--color-text-secondary)",
+          maxWidth: 560,
+          marginBottom: 16,
+        }}
+      >
+        {content.explanation}
+      </div>
 
-      {/* Act 2: Vector space visualization */}
-      <Sequence from={ACT_1_END} durationInFrames={act2Duration}>
-        <AbsoluteFill
+      {/* Query typewriter — fades out as it contracts to dot */}
+      <div
+        style={{
+          opacity: queryOpacity * queryTextOpacity,
+          textAlign: "center" as const,
+          marginBottom: 6,
+          minHeight: 24,
+        }}
+      >
+        <span
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
+            fontFamily: "var(--font-mono)",
+            fontSize: 18,
+            fontWeight: 600,
+            color: "var(--color-text)",
           }}
         >
-          {/* Pipeline steps at top */}
-          <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
-            {content.pipelineSteps.map((step, i) => {
-              const stepOpacity = interpolate(
-                act2Frame,
-                [i * 20, i * 20 + 15],
-                [0, 1],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-              );
-              return (
-                <div
-                  key={i}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    border: `1px solid ${color}`,
-                    fontSize: 12,
-                    color,
-                    opacity: stepOpacity,
-                  }}
-                >
-                  {step}
-                </div>
-              );
-            })}
-          </div>
+          {visibleQuery}
+          {frame >= EXPLAIN_END && frame < contractStart && (
+            <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
+          )}
+        </span>
+      </div>
 
-          {/* Vector space */}
-          <svg width={600} height={360} viewBox="0 0 600 360">
-            {/* Song dots */}
-            {SONG_DOTS.map((dot, i) => {
-              const isHighlighted = dot.isMatch && highlightProgress > 0.3;
-              const dotOpacity = interpolate(searchProgress, [0, 0.3], [0, 1], {
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              });
+      {/* Vector space visualization */}
+      <div style={{ position: "relative", width: 500, height: 190, flexShrink: 0 }}>
+        <svg width={500} height={190} viewBox="0 0 500 190">
+          {/* Database dots */}
+          {DB_DOTS.map((dot, i) => (
+            <circle
+              key={`db-${i}`}
+              cx={dot.x}
+              cy={dot.y}
+              r={3}
+              fill="var(--color-text-tertiary)"
+              opacity={fieldOpacity * 0.25}
+            />
+          ))}
 
-              return (
-                <g key={i}>
-                  {/* Proximity line for matches */}
-                  {dot.isMatch && searchProgress > 0.5 && (
-                    <line
-                      x1={QUERY_POINT.x}
-                      y1={QUERY_POINT.y}
-                      x2={dot.x}
-                      y2={dot.y}
-                      stroke={content.fallbackColor}
-                      strokeWidth={1}
-                      strokeDasharray="4 4"
-                      opacity={highlightProgress * 0.5}
-                    />
-                  )}
-                  <circle
-                    cx={dot.x}
-                    cy={dot.y}
-                    r={isHighlighted ? 8 : 4}
-                    fill={isHighlighted ? content.fallbackColor : "var(--color-text-tertiary)"}
-                    opacity={isHighlighted ? 1 : dotOpacity * 0.3}
+          {/* Match dots — brighter */}
+          {MATCH_DOTS.map((dot, i) => {
+            const dotHighlight = matchProgress > i / MATCH_DOTS.length ? 1 : 0;
+            return (
+              <g key={`match-${i}`}>
+                {/* Dashed line from query to match */}
+                {dotHighlight > 0 && (
+                  <line
+                    x1={QUERY_DOT.x}
+                    y1={QUERY_DOT.y}
+                    x2={dot.x}
+                    y2={dot.y}
+                    stroke={content.fallbackColor}
+                    strokeWidth={1}
+                    strokeDasharray="4 3"
+                    opacity={matchProgress * 0.6}
                   />
-                </g>
-              );
-            })}
+                )}
+                <circle
+                  cx={dot.x}
+                  cy={dot.y}
+                  r={dotHighlight > 0 ? 6 : 3}
+                  fill={dotHighlight > 0 ? content.fallbackColor : "var(--color-text-tertiary)"}
+                  opacity={fieldOpacity * (dotHighlight > 0 ? 1 : 0.25)}
+                />
+              </g>
+            );
+          })}
 
-            {/* Query point */}
-            {collapseProgress > 0.5 && (
+          {/* Query dot */}
+          {queryDotOpacity > 0 && (
+            <>
               <circle
-                cx={QUERY_POINT.x}
-                cy={QUERY_POINT.y}
-                r={interpolate(collapseProgress, [0.5, 1], [20, 8], {
+                cx={QUERY_DOT.x}
+                cy={QUERY_DOT.y}
+                r={interpolate(queryDotOpacity, [0, 1], [14, 7], {
                   extrapolateLeft: "clamp",
                   extrapolateRight: "clamp",
                 })}
                 fill={content.fallbackColor}
-                opacity={0.9}
+                opacity={queryDotOpacity * 0.9}
               />
-            )}
+              {queryDotOpacity > 0.8 && (
+                <text
+                  x={QUERY_DOT.x}
+                  y={QUERY_DOT.y - 14}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill="var(--color-text-secondary)"
+                  fontFamily="var(--font-sans)"
+                >
+                  query vector
+                </text>
+              )}
+            </>
+          )}
+        </svg>
+      </div>
 
-            {/* Query label */}
-            {collapseProgress > 0.8 && (
-              <text
-                x={QUERY_POINT.x}
-                y={QUERY_POINT.y - 16}
-                textAnchor="middle"
-                fontSize={11}
-                fill="var(--color-text-secondary)"
-              >
-                query vector
-              </text>
-            )}
-          </svg>
-        </AbsoluteFill>
-      </Sequence>
-
-      {/* Act 3 */}
-      <Sequence from={ACT_2_END} durationInFrames={ANIMATION_DURATION_FRAMES - ACT_2_END}>
-        <AbsoluteFill>
-          <ResultsReveal
-            results={content.results}
-            verdict={content.verdict}
-            accentColor={color}
+      {/* Success results */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 5,
+          maxWidth: 380,
+          width: "100%",
+        }}
+      >
+        {content.successResults.map((r, i) => (
+          <SongCard
+            key={`s-${i}`}
+            title={r.title}
+            artist={r.artist}
+            year={r.year}
+            status="success"
+            frame={frame}
+            appearFrame={resultsStart + i * 10}
           />
-        </AbsoluteFill>
-      </Sequence>
+        ))}
+      </div>
+
+      {/* Success caption */}
+      <div
+        style={{
+          opacity: captionOpacity,
+          textAlign: "center" as const,
+          fontSize: 12,
+          fontStyle: "italic",
+          color: "var(--color-text-tertiary)",
+          marginTop: 6,
+          marginBottom: 12,
+        }}
+      >
+        {content.successCaption}
+      </div>
+
+      {/* Limitation query */}
+      <div
+        style={{
+          opacity: limQueryOpacity,
+          textAlign: "center" as const,
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "var(--color-text)",
+          }}
+        >
+          {visibleLimQuery}
+          {frame >= QUERY_SUCCESS_END && frame < QUERY_SUCCESS_END + 20 && (
+            <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
+          )}
+        </span>
+      </div>
+
+      {/* Limitation results */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 5,
+          maxWidth: 380,
+          width: "100%",
+        }}
+      >
+        {content.limitationResults.map((r, i) => (
+          <SongCard
+            key={`l-${i}`}
+            title={r.title}
+            artist={r.artist}
+            year={r.year}
+            status="failure"
+            frame={frame}
+            appearFrame={limResultsStart + i * 12}
+          />
+        ))}
+      </div>
+
+      {/* Limitation caption */}
+      <div
+        style={{
+          opacity: limCaptionOpacity,
+          textAlign: "center" as const,
+          fontSize: 12,
+          fontStyle: "italic",
+          color: "var(--color-text-tertiary)",
+          marginTop: 6,
+        }}
+      >
+        {content.limitationCaption}
+      </div>
     </AbsoluteFill>
   );
 };
