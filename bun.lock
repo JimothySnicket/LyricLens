@@ -25,12 +25,14 @@
     "web": {
       "name": "lyric-lens-web",
       "dependencies": {
+        "@remotion/player": "^4.0.440",
         "motion": "^12.0.0",
         "plotly.js-basic-dist-min": "^3.0.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "react-plotly.js": "^2.6.0",
         "react-router": "^7.0.0",
+        "remotion": "^4.0.440",
       },
       "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -181,6 +183,8 @@
     "@qdrant/js-client-rest": ["@qdrant/js-client-rest@1.17.0", "", { "dependencies": { "@qdrant/openapi-typescript-fetch": "1.2.6", "undici": "^6.23.0" }, "peerDependencies": { "typescript": ">=4.7" } }, "sha512-aZFQeirWVqWAa1a8vJ957LMzcXkFHGbsoRhzc8AkGfg6V0jtK8PlG8/eyyc2xhYsR961FDDx1Tx6nyE0K7lS+A=="],
 
     "@qdrant/openapi-typescript-fetch": ["@qdrant/openapi-typescript-fetch@1.2.6", "", {}, "sha512-oQG/FejNpItrxRHoyctYvT3rwGZOnK4jr3JdppO/c78ktDvkWiPXPHNsrDf33K9sZdRb6PR7gi4noIapu5q4HA=="],
+
+    "@remotion/player": ["@remotion/player@4.0.440", "", { "dependencies": { "remotion": "4.0.440" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-zOk7JcuZfOhPpjcMnt49i0WUc96/NSJg733nXIxquSni9HFrY0dT1Eq781/dTymDk5e9Ay0Lphi1wDVNY0k1ig=="],
 
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.0.0-rc.11", "", { "os": "android", "cpu": "arm64" }, "sha512-SJ+/g+xNnOh6NqYxD0V3uVN4W3VfnrGsC9/hoglicgTNfABFG9JjISvkkU0dNY84MNHLWyOgxP9v9Y9pX4S7+A=="],
 
@@ -783,6 +787,8 @@
     "regl-scatter2d": ["regl-scatter2d@3.3.1", "", { "dependencies": { "@plotly/point-cluster": "^3.1.9", "array-range": "^1.0.1", "array-rearrange": "^2.2.2", "clamp": "^1.0.1", "color-id": "^1.1.0", "color-normalize": "^1.5.0", "color-rgba": "^2.1.1", "flatten-vertex-data": "^1.0.2", "glslify": "^7.0.0", "is-iexplorer": "^1.0.0", "object-assign": "^4.1.1", "parse-rect": "^1.2.0", "pick-by-alias": "^1.2.0", "to-float32": "^1.1.0", "update-diff": "^1.1.0" } }, "sha512-seOmMIVwaCwemSYz/y4WE0dbSO9svNFSqtTh5RE57I7PjGo3tcUYKtH0MTSoshcAsreoqN8HoCtnn8wfHXXfKQ=="],
 
     "regl-splom": ["regl-splom@1.0.14", "", { "dependencies": { "array-bounds": "^1.0.1", "array-range": "^1.0.1", "color-alpha": "^1.0.4", "flatten-vertex-data": "^1.0.2", "parse-rect": "^1.2.0", "pick-by-alias": "^1.2.0", "raf": "^3.4.1", "regl-scatter2d": "^3.2.3" } }, "sha512-OiLqjmPRYbd7kDlHC6/zDf6L8lxgDC65BhC8JirhP4ykrK4x22ZyS+BnY8EUinXKDeMgmpRwCvUmk7BK4Nweuw=="],
+
+    "remotion": ["remotion@4.0.440", "", { "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-ai17CML42kRsmUPWSHpd0UTJjETnnYQaACaLPeX8lZnoYqUUXMRe+yrtQHzqDGUjK0tThtJy12VxVkRjjl5IMQ=="],
 
     "require-directory": ["require-directory@2.1.1", "", {}, "sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q=="],
 

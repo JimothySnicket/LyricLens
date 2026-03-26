@@ -1,0 +1,165 @@
+<h2>Page Structure — Revised</h2>
+<p class="subtitle">Using actual brand language: editorial, restrained, monochrome + accent</p>
+
+<div style="display: flex; flex-direction: column; gap: 16px; max-width: 540px; margin: 24px auto;">
+
+  <!-- Section 1: Intro -->
+  <div style="border: 1px solid #333; border-radius: 10px; padding: 24px; background: #0f0f0f; color: #e8e8e8; min-height: 200px; position: relative; font-family: Inter, -apple-system, sans-serif;">
+    <div style="position: absolute; top: 10px; right: 12px; font-size: 9px; letter-spacing: 2px; color: #666; text-transform: uppercase;">Section 1 · 100vh</div>
+    <div style="text-align: center; padding-top: 24px;">
+      <h1 style="font-size: 36px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px;">
+        Lyric<span style="color: #999;">Lens</span>
+      </h1>
+      <p style="font-size: 13px; color: #999; margin-bottom: 20px; line-height: 1.6; max-width: 380px; margin-left: auto; margin-right: auto;">
+        A full RAG pipeline — from regex tokenisation to LLM-powered intent extraction — searching 2,742 Billboard hits four different ways, side by side.
+      </p>
+
+      <!-- Tech as capabilities, not just libraries -->
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 24px;">
+        <span style="font-size: 10px; padding: 4px 10px; border-radius: 20px; border: 1px solid #333; color: #666;">Query parsing — 3 layers</span>
+        <span style="font-size: 10px; padding: 4px 10px; border-radius: 20px; border: 1px solid #333; color: #666;">384-dim vector embeddings</span>
+        <span style="font-size: 10px; padding: 4px 10px; border-radius: 20px; border: 1px solid #333; color: #666;">Qdrant vector search</span>
+        <span style="font-size: 10px; padding: 4px 10px; border-radius: 20px; border: 1px solid #333; color: #666;">DeepSeek V3 intent extraction</span>
+        <span style="font-size: 10px; padding: 4px 10px; border-radius: 20px; border: 1px solid #333; color: #666;">Agentic comparison</span>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
+        <span style="font-size: 12px; padding: 8px 20px; border-radius: 20px; background: #e8e8e8; color: #0f0f0f; font-weight: 500;">Scroll to explore</span>
+        <span style="font-size: 12px; color: #666;">or</span>
+        <span style="font-size: 12px; color: #666; border-bottom: 1px solid #444;">Skip to search &darr;</span>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 20px; color: #444; font-size: 14px;">&#8964;</div>
+  </div>
+
+  <!-- Animation sections -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- Keyword -->
+    <div style="border: 1px solid #333; border-radius: 10px; padding: 20px; background: #0f0f0f; color: #e8e8e8; min-height: 100px; position: relative; font-family: Inter, -apple-system, sans-serif;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div>
+          <span style="font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666;">01</span>
+          <span style="font-size: 14px; font-weight: 600; margin-left: 12px;">Keyword Search</span>
+        </div>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #e65100; display: inline-block;"></span>
+      </div>
+      <div style="margin: 16px 0; padding: 24px; border: 1px solid #252525; border-radius: 8px; text-align: center; color: #444; font-size: 11px;">
+        Remotion Player — auto-plays on snap<br>
+        <span style="font-size: 10px; color: #333;">~8s · scripted animation showing regex tokenisation → exact matching</span>
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <span style="font-size: 10px; color: #444; border-bottom: 1px solid #333;">Skip to search &darr;</span>
+      </div>
+    </div>
+
+    <!-- Semantic -->
+    <div style="border: 1px solid #333; border-radius: 10px; padding: 20px; background: #0f0f0f; color: #e8e8e8; min-height: 100px; position: relative; font-family: Inter, -apple-system, sans-serif;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div>
+          <span style="font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666;">02</span>
+          <span style="font-size: 14px; font-weight: 600; margin-left: 12px;">Semantic Search</span>
+        </div>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #1565c0; display: inline-block;"></span>
+      </div>
+      <div style="margin: 16px 0; padding: 24px; border: 1px solid #252525; border-radius: 8px; text-align: center; color: #444; font-size: 11px;">
+        Remotion Player — query embedding → vector space → cosine similarity
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <span style="font-size: 10px; color: #444; border-bottom: 1px solid #333;">Skip to search &darr;</span>
+      </div>
+    </div>
+
+    <!-- Hybrid -->
+    <div style="border: 1px solid #333; border-radius: 10px; padding: 20px; background: #0f0f0f; color: #e8e8e8; min-height: 100px; position: relative; font-family: Inter, -apple-system, sans-serif;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div>
+          <span style="font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666;">03</span>
+          <span style="font-size: 14px; font-weight: 600; margin-left: 12px;">Hybrid Search</span>
+        </div>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #6a1b9a; display: inline-block;"></span>
+      </div>
+      <div style="margin: 16px 0; padding: 24px; border: 1px solid #252525; border-radius: 8px; text-align: center; color: #444; font-size: 11px;">
+        Remotion Player — filter extraction → narrowed pool → vector re-rank
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <span style="font-size: 10px; color: #444; border-bottom: 1px solid #333;">Skip to search &darr;</span>
+      </div>
+    </div>
+
+    <!-- Natural Language -->
+    <div style="border: 1px solid #333; border-radius: 10px; padding: 20px; background: #0f0f0f; color: #e8e8e8; min-height: 100px; position: relative; font-family: Inter, -apple-system, sans-serif;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div>
+          <span style="font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666;">04</span>
+          <span style="font-size: 14px; font-weight: 600; margin-left: 12px;">Natural Language</span>
+        </div>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #2e7d32; display: inline-block;"></span>
+      </div>
+      <div style="margin: 16px 0; padding: 24px; border: 1px solid #252525; border-radius: 8px; text-align: center; color: #444; font-size: 11px;">
+        Remotion Player — LLM intent extraction → structured JSON → search
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <span style="font-size: 10px; color: #444; border-bottom: 1px solid #333;">Skip to search &darr;</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 6: Search -->
+  <div style="border: 1px solid #333; border-radius: 10px; padding: 20px; background: #0f0f0f; color: #e8e8e8; min-height: 160px; position: relative; font-family: Inter, -apple-system, sans-serif;">
+    <div style="position: absolute; top: 10px; right: 12px; font-size: 9px; letter-spacing: 2px; color: #666; text-transform: uppercase;">Section 6 · scrollable</div>
+
+    <!-- Sticky nav -->
+    <div style="border-bottom: 1px solid #252525; padding-bottom: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 13px; font-weight: 600;">Lyric<span style="color:#999;">Lens</span></span>
+      <div style="display: flex; gap: 16px; font-size: 10px; color: #666;">
+        <span>Intro</span>
+        <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#e65100;margin-right:3px;vertical-align:middle;"></span>Keyword</span>
+        <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#1565c0;margin-right:3px;vertical-align:middle;"></span>Semantic</span>
+        <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#6a1b9a;margin-right:3px;vertical-align:middle;"></span>Hybrid</span>
+        <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2e7d32;margin-right:3px;vertical-align:middle;"></span>NL</span>
+        <span style="color: #999;">Deep Dive &rarr;</span>
+      </div>
+    </div>
+
+    <!-- Condensed summary -->
+    <div style="text-align: center; margin-bottom: 12px;">
+      <p style="font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666; margin-bottom: 8px;">Try it yourself</p>
+    </div>
+
+    <!-- Search bar -->
+    <div style="border: 1px solid #333; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: #444;">Search 2,742 songs...</div>
+
+    <!-- 4-column results -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+      <div style="border: 1px solid #252525; border-radius: 6px; padding: 10px; font-size: 9px; color: #444;">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#e65100;"></span><span style="color:#999;font-weight:600;">Keyword</span></div>
+        Results...
+      </div>
+      <div style="border: 1px solid #252525; border-radius: 6px; padding: 10px; font-size: 9px; color: #444;">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#1565c0;"></span><span style="color:#999;font-weight:600;">Semantic</span></div>
+        Results...
+      </div>
+      <div style="border: 1px solid #252525; border-radius: 6px; padding: 10px; font-size: 9px; color: #444;">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#6a1b9a;"></span><span style="color:#999;font-weight:600;">Hybrid</span></div>
+        Results...
+      </div>
+      <div style="border: 1px solid #252525; border-radius: 6px; padding: 10px; font-size: 9px; color: #444;">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#2e7d32;"></span><span style="color:#999;font-weight:600;">NL</span></div>
+        Results...
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="max-width: 540px; margin: 20px auto; font-size: 12px; color: #999; line-height: 1.7;">
+  <strong style="color: #e8e8e8;">Changes from v1:</strong>
+  <ul style="margin: 8px 0 0 16px; padding: 0;">
+    <li>Monochrome surfaces (#0f0f0f bg, #333 borders) — mode colors as dot accents only</li>
+    <li>Tech badges reframed as <em>capabilities</em> not libraries — "3-layer query parsing", "384-dim vectors", "agentic comparison"</li>
+    <li>Copy rewritten — leads with "full RAG pipeline" and what it actually demonstrates</li>
+    <li>Skip links as understated underlined text, not colored buttons</li>
+    <li>Animation sections show what each animation will demonstrate, not just "Remotion Player"</li>
+  </ul>
+</div>
