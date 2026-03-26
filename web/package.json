@@ -8,12 +8,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router": "^7.0.0",
+    "@remotion/player": "^4.0.440",
     "motion": "^12.0.0",
     "plotly.js-basic-dist-min": "^3.0.0",
-    "react-plotly.js": "^2.6.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-plotly.js": "^2.6.0",
+    "react-router": "^7.0.0",
+    "remotion": "^4.0.440"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
