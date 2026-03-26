@@ -76,3 +76,21 @@ body {
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
 }
+
+.snap-container {
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+.snap-section {
+  height: 100vh;
+  scroll-snap-align: start;
+  overflow: hidden;
+}
+
+.snap-section-scrollable {
+  min-height: 100vh;
+  scroll-snap-align: start;
+}
