@@ -55,6 +55,12 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
   // Success results: 180-210
   const resultsStart = EXPLAIN_END + 90;
 
+  // Column label opacities — appear with their content
+  const successLabelOpacity = interpolate(frame, [resultsStart, resultsStart + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   // Success caption
   const captionStart = resultsStart + 20;
   const captionOpacity = interpolate(frame, [captionStart, captionStart + 15], [0, 1], {
@@ -81,6 +87,12 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
   // "old" flashes with "?" : 235-250
   const ambiguousStart = QUERY_SUCCESS_END + 25;
   const ambiguousProgress = interpolate(frame, [ambiguousStart, ambiguousStart + 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation column label opacity — appears when ambiguous content starts
+  const limLabelOpacity = interpolate(frame, [ambiguousStart, ambiguousStart + 12], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -121,10 +133,10 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
         style={{
           opacity: explainOpacity,
           textAlign: "center" as const,
-          fontSize: 13,
-          lineHeight: 1.6,
+          fontSize: 16,
+          lineHeight: 1.7,
           color: "var(--color-text-secondary)",
-          maxWidth: 560,
+          maxWidth: 700,
           alignSelf: "center",
           marginBottom: 16,
         }}
@@ -155,7 +167,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
           {/* Column label */}
           <div
             style={{
-              opacity: queryOpacity,
+              opacity: successLabelOpacity,
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.5,
@@ -355,6 +367,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
           {/* Column label */}
           <div
             style={{
+              opacity: limLabelOpacity,
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.5,

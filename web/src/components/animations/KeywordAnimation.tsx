@@ -41,6 +41,12 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
   // Success results: 150-210 (staggered)
   const resultsStart = EXPLAIN_END + 60;
 
+  // Column label opacities — appear with their content
+  const successLabelOpacity = interpolate(frame, [resultsStart, resultsStart + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   // Success caption
   const captionStart = resultsStart + 40;
   const captionOpacity = interpolate(frame, [captionStart, captionStart + 15], [0, 1], {
@@ -66,6 +72,12 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
 
   // Limitation results: 230-270
   const limResultsStart = QUERY_SUCCESS_END + 20;
+
+  // Limitation column label opacity — appears with its results
+  const limLabelOpacity = interpolate(frame, [limResultsStart, limResultsStart + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
 
   // Limitation caption
   const limCaptionStart = limResultsStart + 15;
@@ -95,10 +107,10 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
         style={{
           opacity: explainOpacity,
           textAlign: "center" as const,
-          fontSize: 13,
-          lineHeight: 1.6,
+          fontSize: 16,
+          lineHeight: 1.7,
           color: "var(--color-text-secondary)",
-          maxWidth: 560,
+          maxWidth: 700,
           alignSelf: "center",
           marginBottom: 16,
         }}
@@ -129,7 +141,7 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
           {/* Column label */}
           <div
             style={{
-              opacity: queryOpacity,
+              opacity: successLabelOpacity,
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.5,
@@ -263,6 +275,7 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
           {/* Column label */}
           <div
             style={{
+              opacity: limLabelOpacity,
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: 1.5,
