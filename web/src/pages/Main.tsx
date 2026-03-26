@@ -1,9 +1,17 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, useInView } from "motion/react";
 import type { SearchMode, SearchResponse } from "../lib/types";
 import { searchAll } from "../lib/api";
 import { SearchBar } from "../components/SearchBar";
 import { QueryChips } from "../components/QueryChips";
+import { useSnapScroll } from "../hooks/useSnapScroll";
+import { animationContent } from "../components/animations/animation-content";
+import { AnimationSection } from "../components/animations/AnimationSection";
+import { KeywordAnimation } from "../components/animations/KeywordAnimation";
+import { SemanticAnimation } from "../components/animations/SemanticAnimation";
+import { HybridAnimation } from "../components/animations/HybridAnimation";
+import { NLAnimation } from "../components/animations/NLAnimation";
+import { Nav } from "../components/Nav";
 
 // ---------------------------------------------------------------------------
 // Fade-in wrapper — triggers when element enters viewport
@@ -34,243 +42,68 @@ function Reveal({
 }
 
 // ---------------------------------------------------------------------------
-// Section 1: Hero
+// Section 1: Intro
 // ---------------------------------------------------------------------------
-function Hero() {
+function IntroSection({ onSkipToSearch }: { onSkipToSearch: () => void }) {
   return (
-    <section className="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Subtle grid background */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
+    <div className="snap-section flex flex-col items-center justify-center text-center px-6 bg-(--color-bg) relative">
+      <div className="relative">
+        <h1 className="text-5xl md:text-6xl font-bold text-(--color-text) tracking-tight mb-6">
+          Lyric<span className="text-(--color-text-secondary)">Lens</span>
+        </h1>
+        <p className="text-base text-(--color-text-secondary) max-w-lg mx-auto leading-relaxed">
+          Welcome to LyricLens — this application demonstrates different methods
+          of RAG retrieval and the relative merits of each depending on your use
+          case.
+        </p>
+      </div>
 
-      <Reveal>
-        <div className="relative">
-          <h1 className="text-5xl md:text-6xl font-bold text-(--color-text) tracking-tight mb-6">
-            Lyric<span className="text-(--color-text-secondary)">Lens</span>
-          </h1>
-          <p className="text-lg md:text-xl text-(--color-text-secondary) max-w-2xl leading-relaxed">
-            Four approaches to the same search problem.
-            <br className="hidden md:block" />
-            From keyword matching to LLM-powered understanding — see what each finds and why.
-          </p>
-        </div>
-      </Reveal>
-
-      <Reveal delay={0.2}>
-        <div className="flex flex-wrap justify-center gap-2 mt-10 mb-12">
-          {[
-            "React + TypeScript",
-            "Bun + Hono",
-            "Qdrant Cloud",
-            "MiniLM-L6-v2",
-            "DeepSeek V3",
-            "2,742 songs",
-          ].map((item) => (
+      <div className="flex flex-wrap justify-center gap-2 mt-10 mb-12">
+        {["React", "TypeScript", "Bun", "Hono", "Qdrant", "Python", "Remotion", "Tailwind"].map(
+          (item) => (
             <span
               key={item}
               className="px-3 py-1 rounded-full text-xs tracking-wide border border-(--color-border) text-(--color-text-tertiary)"
             >
               {item}
             </span>
-          ))}
-        </div>
-      </Reveal>
-
-      <Reveal delay={0.4}>
-        <a
-          href="#search"
-          className="group px-8 py-3 rounded-full text-sm font-medium bg-(--color-text) text-(--color-bg) hover:opacity-90 transition-opacity"
-        >
-          Skip to Search
-          <span className="inline-block ml-2 group-hover:translate-y-0.5 transition-transform">&darr;</span>
-        </a>
-      </Reveal>
-
-      <Reveal delay={0.6} className="absolute bottom-8">
-        <div className="flex flex-col items-center gap-2 text-(--color-text-tertiary)">
-          <span className="text-[10px] uppercase tracking-[0.2em]">Scroll to explore</span>
-          <motion.div
-            animate={{ y: [0, 6, 0] }}
-            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M4 6l4 4 4-4" />
-            </svg>
-          </motion.div>
-        </div>
-      </Reveal>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section 2: Pipeline Explainers
-// ---------------------------------------------------------------------------
-const PIPELINES = [
-  {
-    id: "keyword",
-    num: "01",
-    label: "Keyword Search",
-    color: "#e65100",
-    what: "A regex parser breaks your query into terms, then scans every song for exact word matches in titles, lyrics, and artist names.",
-    how: ["Parse query into tokens", "Remove stop words", "Match against title, lyrics, artist", "Score by match weight + position"],
-    good: { query: "baby in the title from the 60s", result: "Baby Love — The Supremes. Exact title match, decade filter applied." },
-    bad: { query: "songs about heartbreak", result: "Only finds songs literally containing 'heartbreak'. Misses songs about loss, pain, and longing." },
-    verdict: "Fast and predictable. Best when you know the exact words.",
-  },
-  {
-    id: "semantic",
-    num: "02",
-    label: "Semantic Search",
-    color: "#1565c0",
-    what: "Your query is embedded into a 384-dimensional vector and compared against pre-computed song profile summaries — finding meaning, not words.",
-    how: ["Embed query with MiniLM", "Search summary vectors in Qdrant", "Rank by cosine similarity", "Return nearest neighbors"],
-    good: { query: "songs that feel like driving at night", result: "Self Control, I Love A Rainy Night. Captures the nocturnal, contemplative vibe." },
-    bad: { query: "by Michael Jackson", result: "Artist name isn't a 'meaning'. The vector for 'michael jackson' is vague without structured filters." },
-    verdict: "Captures vibes and concepts. Fails on structured lookups.",
-  },
-  {
-    id: "hybrid",
-    num: "03",
-    label: "Hybrid Search",
-    color: "#6a1b9a",
-    what: "The regex parser extracts structured filters (decade, genre, mood, artist), Qdrant narrows the pool, then vector similarity ranks what's left.",
-    how: ["Parse → extract filters", "Apply as Qdrant payload constraints", "Embed remaining text", "Vector search within filtered set", "Boost keyword matches"],
-    good: { query: "sad rock from the 80s", result: "Filters to 1980s rock with high sadness scores, then ranks by semantic similarity to 'sad rock'." },
-    bad: { query: "old songs about missing home", result: "'Old' isn't in the regex dictionary. No decade filter applied — returns songs from all eras." },
-    verdict: "Best general-purpose. Limited by how smart the parser is.",
-  },
-  {
-    id: "natural",
-    num: "04",
-    label: "Natural Language",
-    color: "#2e7d32",
-    what: "An LLM reads your query and extracts structured intent — understanding context, slang, and relative time references that no rule system can.",
-    how: ["Send query to DeepSeek", "LLM returns structured JSON", "Validate + fallback to regex", "Vector search with LLM-derived filters"],
-    good: { query: "old songs about missing home", result: "LLM maps 'old' → 1950s-70s, 'missing home' → sadness. Finds nostalgic classics." },
-    good2: { query: "something like bohemian rhapsody", result: "Extracts: artist=Queen, genre=rock, semantic='epic rock with operatic sections'." },
-    verdict: "Handles anything. Trade-off: ~3s latency and API cost per query.",
-  },
-];
-
-function PipelineSection() {
-  return (
-    <section className="py-24 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Reveal>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-(--color-text-tertiary) mb-3">
-            How it works
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold text-(--color-text) mb-4">
-            Four approaches,<br />same problem
-          </h2>
-          <p className="text-(--color-text-secondary) mb-16 max-w-lg">
-            Each pipeline adds a layer of intelligence. The comparison reveals when
-            each approach wins — and when it doesn't.
-          </p>
-        </Reveal>
-
-        <div className="space-y-16">
-          {PIPELINES.map((p, i) => (
-            <Reveal key={p.id} delay={i * 0.05}>
-              <div id={`how-${p.id}`} className="group">
-                {/* Header */}
-                <div className="flex items-baseline gap-4 mb-6">
-                  <span
-                    className="text-4xl font-bold opacity-20"
-                    style={{ color: p.color }}
-                  >
-                    {p.num}
-                  </span>
-                  <div>
-                    <h3 className="text-xl font-semibold text-(--color-text)">{p.label}</h3>
-                    <p className="text-sm text-(--color-text-secondary) mt-1 max-w-xl leading-relaxed">{p.what}</p>
-                  </div>
-                </div>
-
-                {/* Pipeline steps */}
-                <div className="flex flex-wrap gap-2 mb-6 ml-16">
-                  {p.how.map((step, si) => (
-                    <motion.div
-                      key={si}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: si * 0.1, duration: 0.4 }}
-                      className="flex items-center gap-2"
-                    >
-                      <span
-                        className="text-[10px] px-2.5 py-1 rounded-full border"
-                        style={{ borderColor: p.color + "40", color: p.color }}
-                      >
-                        {step}
-                      </span>
-                      {si < p.how.length - 1 && (
-                        <span className="text-(--color-text-tertiary) text-xs">&rarr;</span>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Examples */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-16">
-                  {/* Good */}
-                  <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                      <span className="text-[10px] uppercase tracking-wider text-green-500 font-medium">Strength</span>
-                    </div>
-                    <p className="text-sm text-(--color-text) font-mono mb-1.5">"{p.good.query}"</p>
-                    <p className="text-xs text-(--color-text-tertiary) leading-relaxed">{p.good.result}</p>
-                  </div>
-
-                  {/* Good 2 or Bad */}
-                  {"good2" in p ? (
-                    <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        <span className="text-[10px] uppercase tracking-wider text-green-500 font-medium">Strength</span>
-                      </div>
-                      <p className="text-sm text-(--color-text) font-mono mb-1.5">"{(p as any).good2.query}"</p>
-                      <p className="text-xs text-(--color-text-tertiary) leading-relaxed">{(p as any).good2.result}</p>
-                    </div>
-                  ) : "bad" in p ? (
-                    <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                        <span className="text-[10px] uppercase tracking-wider text-red-400 font-medium">Limitation</span>
-                      </div>
-                      <p className="text-sm text-(--color-text) font-mono mb-1.5">"{(p as any).bad.query}"</p>
-                      <p className="text-xs text-(--color-text-tertiary) leading-relaxed">{(p as any).bad.result}</p>
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Verdict */}
-                <p className="text-xs text-(--color-text-tertiary) mt-4 ml-16 italic">
-                  {p.verdict}
-                </p>
-
-                {/* Divider */}
-                {i < PIPELINES.length - 1 && (
-                  <div className="mt-16 border-t border-(--color-border) opacity-30" />
-                )}
-              </div>
-            </Reveal>
-          ))}
-        </div>
+          )
+        )}
       </div>
-    </section>
+
+      <div className="flex items-center gap-3">
+        <span className="px-6 py-2.5 rounded-full text-sm font-medium bg-(--color-text) text-(--color-bg)">
+          Scroll to explore
+        </span>
+        <span className="text-sm text-(--color-text-tertiary)">or</span>
+        <button
+          type="button"
+          onClick={onSkipToSearch}
+          className="text-sm text-(--color-text-tertiary) border-b border-(--color-border) hover:text-(--color-text-secondary) transition-colors bg-transparent cursor-pointer"
+          style={{ padding: 0, fontFamily: "inherit" }}
+        >
+          Skip to search ↓
+        </button>
+      </div>
+
+      {/* Scroll indicator */}
+      <div className="absolute bottom-8 flex flex-col items-center gap-2 text-(--color-text-tertiary)">
+        <span className="text-[10px] uppercase tracking-[0.2em]">Scroll</span>
+        <motion.div
+          animate={{ y: [0, 6, 0] }}
+          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </motion.div>
+      </div>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Section 3: Search
+// Section 6: Search
 // ---------------------------------------------------------------------------
 const MODE_META: Record<SearchMode, { label: string; desc: string; color: string }> = {
   keyword: { label: "Keyword", desc: "Regex + exact matching", color: "#e65100" },
@@ -356,6 +189,28 @@ function SearchSection() {
             <p className="text-sm text-(--color-text-secondary)">
               Same query, four pipelines, side by side.
             </p>
+          </div>
+        </Reveal>
+
+        {/* Condensed mode summary */}
+        <Reveal>
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            {MODES.map((mode) => {
+              const m = MODE_META[mode];
+              return (
+                <div key={mode} className="flex items-center gap-2">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                    style={{ backgroundColor: m.color }}
+                  >
+                    {MODES.indexOf(mode) + 1}
+                  </div>
+                  <span className="text-xs text-(--color-text-secondary)">
+                    {m.label} — {m.desc}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </Reveal>
 
@@ -548,12 +403,48 @@ function ResultRow({
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+const ANIMATION_MODES = [
+  { key: "keyword", composition: KeywordAnimation },
+  { key: "semantic", composition: SemanticAnimation },
+  { key: "hybrid", composition: HybridAnimation },
+  { key: "natural", composition: NLAnimation },
+] as const;
+
+const SECTION_COUNT = 6; // intro + 4 animations + search
+
 export function Main() {
+  const { containerRef, setSectionRef, activeIndex, scrollToSection } = useSnapScroll({
+    sectionCount: SECTION_COUNT,
+  });
+
+  const skipToSearch = useCallback(() => scrollToSection(5), [scrollToSection]);
+  const navVisible = activeIndex >= 5;
+
   return (
-    <div>
-      <Hero />
-      <PipelineSection />
-      <SearchSection />
-    </div>
+    <>
+      <Nav visible={navVisible} onNavigate={scrollToSection} />
+      <div ref={containerRef} className="snap-container">
+        {/* Section 1: Intro */}
+        <div ref={setSectionRef(0)}>
+          <IntroSection onSkipToSearch={skipToSearch} />
+        </div>
+
+        {/* Sections 2-5: Animations */}
+        {ANIMATION_MODES.map((mode, i) => (
+          <div key={mode.key} ref={setSectionRef(i + 1)}>
+            <AnimationSection
+              content={animationContent[mode.key]}
+              composition={mode.composition}
+              onSkipToSearch={skipToSearch}
+            />
+          </div>
+        ))}
+
+        {/* Section 6: Search */}
+        <div ref={setSectionRef(5)} className="snap-section-scrollable">
+          <SearchSection />
+        </div>
+      </div>
+    </>
   );
 }
