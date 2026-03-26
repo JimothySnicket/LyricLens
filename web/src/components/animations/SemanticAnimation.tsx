@@ -24,6 +24,21 @@ const MATCH_DOTS = [
 
 const QUERY_DOT = { x: 190, y: 60 };
 
+// Limitation side — query lands in "wrong neighborhood"
+const LIM_DB_DOTS = Array.from({ length: 24 }, (_, i) => ({
+  x: 20 + ((i * 149 + 37) % 320),
+  y: 15 + ((i * 113 + 19) % 100),
+}));
+
+const LIM_QUERY_DOT = { x: 170, y: 55 };
+
+// These are semantically "close" but structurally wrong
+const LIM_MATCH_DOTS = [
+  { x: 200, y: 40 },
+  { x: 145, y: 70 },
+  { x: 210, y: 80 },
+];
+
 export const SemanticAnimation: React.FC<Props> = ({ content }) => {
   const frame = useCurrentFrame();
   const color = `var(${content.cssVar}, ${content.fallbackColor})`;
@@ -100,8 +115,8 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
   );
   const visibleLimQuery = limQueryText.slice(0, Math.floor(limTypeProgress));
 
-  // Limitation results: 230-270
-  const limResultsStart = QUERY_SUCCESS_END + 20;
+  // Limitation results: 270+
+  const limResultsStart = QUERY_SUCCESS_END + 60;
 
   // Limitation column label opacity — appears with its results
   const limLabelOpacity = interpolate(frame, [limResultsStart, limResultsStart + 12], [0, 1], {
@@ -116,14 +131,38 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
     extrapolateRight: "clamp",
   });
 
-  // Query text fades as it contracts
-  const queryTextOpacity = interpolate(contractProgress, [0, 0.6], [1, 0], {
+  // Query dot appears as contract progresses (text stays visible)
+  const queryDotOpacity = interpolate(contractProgress, [0.3, 0.8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Query dot appears as contract progresses
-  const queryDotOpacity = interpolate(contractProgress, [0.3, 0.8], [0, 1], {
+  // === RIGHT COLUMN vector visualization ===
+  // Limitation query contracts to dot: 230-245
+  const limContractStart = QUERY_SUCCESS_END + 20;
+  const limContractEnd = QUERY_SUCCESS_END + 35;
+  const limContractProgress = interpolate(frame, [limContractStart, limContractEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation dot field: 245-255
+  const limFieldStart = QUERY_SUCCESS_END + 35;
+  const limFieldEnd = QUERY_SUCCESS_END + 45;
+  const limFieldOpacity = interpolate(frame, [limFieldStart, limFieldEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation match highlights: 255-270
+  const limMatchStart = QUERY_SUCCESS_END + 45;
+  const limMatchEnd = QUERY_SUCCESS_END + 60;
+  const limMatchProgress = interpolate(frame, [limMatchStart, limMatchEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const limQueryDotOpacity = interpolate(limContractProgress, [0.3, 0.8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -190,10 +229,10 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
             ✓ Works
           </div>
 
-          {/* Success query — typewriter, fades out as it contracts to dot */}
+          {/* Success query — typewriter, stays visible */}
           <div
             style={{
-              opacity: queryOpacity * queryTextOpacity,
+              opacity: queryOpacity,
               marginBottom: 4,
               minHeight: 20,
             }}
@@ -349,10 +388,11 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
             ✗ Struggles
           </div>
 
-          {/* Limitation query — typewriter */}
+          {/* Limitation query — typewriter, stays visible */}
           <div
             style={{
-              marginBottom: 10,
+              marginBottom: 4,
+              minHeight: 20,
             }}
           >
             <span
@@ -364,10 +404,83 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
               }}
             >
               {visibleLimQuery}
-              {frame >= QUERY_SUCCESS_END && frame < QUERY_SUCCESS_END + 20 && (
+              {frame >= QUERY_SUCCESS_END && frame < limContractStart && (
                 <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
               )}
             </span>
+          </div>
+
+          {/* Limitation vector space visualization */}
+          <div style={{ position: "relative", width: "100%", height: 120, flexShrink: 0 }}>
+            <svg width="100%" height={120} viewBox="0 0 360 120">
+              {/* Database dots */}
+              {LIM_DB_DOTS.map((dot, i) => (
+                <circle
+                  key={`ldb-${i}`}
+                  cx={dot.x}
+                  cy={dot.y}
+                  r={2.5}
+                  fill="var(--color-text-tertiary)"
+                  opacity={limFieldOpacity * 0.25}
+                />
+              ))}
+
+              {/* Match dots — semantically close but structurally wrong */}
+              {LIM_MATCH_DOTS.map((dot, i) => {
+                const dotHighlight = limMatchProgress > i / LIM_MATCH_DOTS.length ? 1 : 0;
+                return (
+                  <g key={`lmatch-${i}`}>
+                    {dotHighlight > 0 && (
+                      <line
+                        x1={LIM_QUERY_DOT.x}
+                        y1={LIM_QUERY_DOT.y}
+                        x2={dot.x}
+                        y2={dot.y}
+                        stroke="#dc2626"
+                        strokeWidth={1}
+                        strokeDasharray="4 3"
+                        opacity={limMatchProgress * 0.6}
+                      />
+                    )}
+                    <circle
+                      cx={dot.x}
+                      cy={dot.y}
+                      r={dotHighlight > 0 ? 5 : 2.5}
+                      fill={dotHighlight > 0 ? "#dc2626" : "var(--color-text-tertiary)"}
+                      opacity={limFieldOpacity * (dotHighlight > 0 ? 1 : 0.25)}
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Query dot */}
+              {limQueryDotOpacity > 0 && (
+                <>
+                  <circle
+                    cx={LIM_QUERY_DOT.x}
+                    cy={LIM_QUERY_DOT.y}
+                    r={interpolate(limQueryDotOpacity, [0, 1], [12, 6], {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                    })}
+                    fill={content.fallbackColor}
+                    opacity={limQueryDotOpacity * 0.9}
+                  />
+                  {limQueryDotOpacity > 0.8 && (
+                    <text
+                      x={LIM_QUERY_DOT.x}
+                      y={LIM_QUERY_DOT.y - 12}
+                      textAnchor="middle"
+                      fontSize={9}
+                      fill="var(--color-text-secondary)"
+                      fontFamily="var(--font-sans)"
+                    >
+                      query vector
+                    </text>
+                  )}
+                </>
+              )}
+            </svg>
           </div>
 
           {/* Limitation results */}

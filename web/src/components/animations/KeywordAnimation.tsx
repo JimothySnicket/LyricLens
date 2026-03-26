@@ -70,8 +70,16 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
   );
   const visibleLimQuery = limQueryText.slice(0, Math.floor(limTypeProgress));
 
-  // Limitation results: 230-270
-  const limResultsStart = QUERY_SUCCESS_END + 20;
+  // Limitation token processing: 230-250
+  const limTokenStart = QUERY_SUCCESS_END + 20;
+  const limTokenEnd = QUERY_SUCCESS_END + 40;
+  const limTokenProgress = interpolate(frame, [limTokenStart, limTokenEnd], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Limitation results: 250-290
+  const limResultsStart = QUERY_SUCCESS_END + 40;
 
   // Limitation column label opacity — appears with its results
   const limLabelOpacity = interpolate(frame, [limResultsStart, limResultsStart + 12], [0, 1], {
@@ -86,10 +94,14 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
     extrapolateRight: "clamp",
   });
 
-  // Split query into words for token display
+  // Split queries into words for token display
   const queryWords = queryText.split(" ");
   const stopWords = content.stopWords ?? [];
   const tokens = content.successTokens ?? [];
+
+  const limQueryWords = limQueryText.split(" ");
+  const limStopWords = content.limitationStopWords ?? [];
+  const limTokens = content.limitationTokens ?? [];
 
   return (
     <AbsoluteFill
@@ -290,7 +302,7 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
           {/* Limitation query — typewriter */}
           <div
             style={{
-              marginBottom: 10,
+              marginBottom: 6,
             }}
           >
             <span
@@ -307,6 +319,54 @@ export const KeywordAnimation: React.FC<Props> = ({ content }) => {
               )}
             </span>
           </div>
+
+          {/* Token pills — stop words grey, active tokens highlighted */}
+          {limTokenProgress > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: 5,
+                marginBottom: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              {limQueryWords.map((word, i) => {
+                const isStop = limStopWords.includes(word.toLowerCase());
+                const isToken = limTokens.includes(word.toLowerCase());
+                const wordAppear = interpolate(
+                  limTokenProgress,
+                  [i / limQueryWords.length, Math.min((i + 1) / limQueryWords.length, 1)],
+                  [0, 1],
+                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+                );
+
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "3px 7px",
+                      borderRadius: 10,
+                      opacity: wordAppear > 0.3 ? 1 : 0.4,
+                      color: isStop
+                        ? "var(--color-text-tertiary)"
+                        : isToken
+                          ? "white"
+                          : "var(--color-text)",
+                      backgroundColor: isToken && wordAppear > 0.5
+                        ? content.fallbackColor
+                        : "transparent",
+                      textDecoration: isStop && wordAppear > 0.5 ? "line-through" : "none",
+                    }}
+                  >
+                    {word}
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
           {/* Limitation results */}
           <div

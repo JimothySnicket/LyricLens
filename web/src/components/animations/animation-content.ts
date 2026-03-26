@@ -28,6 +28,8 @@ export interface ModeAnimationContent {
   successResults: SuccessResult[];
   successCaption: string;
   limitationQuery: string;
+  limitationTokens?: string[]; // highlighted tokens after parsing (keyword limitation)
+  limitationStopWords?: string[]; // words that grey out (keyword limitation)
   limitationResults: LimitationResult[];
   limitationCaption: string;
 
@@ -63,6 +65,8 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     successCaption: "When you know exactly what you\u2019re looking for \u2014 instant match.",
 
     limitationQuery: "songs about heartbreak",
+    limitationStopWords: ["songs", "about"],
+    limitationTokens: ["heartbreak"],
     limitationResults: [
       { title: "I Will Always Love You", artist: "Dolly Parton", year: 1974 },
       { title: "Nothing Compares 2 U", artist: "Sinead O'Connor", year: 1990 },
@@ -93,8 +97,9 @@ export const animationContent: Record<string, ModeAnimationContent> = {
 
     limitationQuery: "baby in the title from the 60s",
     limitationResults: [
-      { title: "My Girl", artist: "The Temptations" },
-      { title: "Stand By Me", artist: "Ben E. King" },
+      { title: "My Girl", artist: "The Temptations", year: 1964 },
+      { title: "Stand By Me", artist: "Ben E. King", year: 1961 },
+      { title: "Be My Baby", artist: "The Ronettes", year: 1963 },
     ],
     limitationCaption:
       "\u2018In the title\u2019 and \u2018from the 60s\u2019 are facts, not feelings \u2014 vectors can\u2019t filter on them.",

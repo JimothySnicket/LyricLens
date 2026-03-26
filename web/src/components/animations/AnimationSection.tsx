@@ -110,6 +110,8 @@ export function AnimationSection({
           compositionWidth={900}
           compositionHeight={500}
           style={{ width: "100%", height: "100%" }}
+          moveToBeginningWhenEnded={false}
+          clickToPlay={false}
           acknowledgeRemotionLicense
         />
       </div>
