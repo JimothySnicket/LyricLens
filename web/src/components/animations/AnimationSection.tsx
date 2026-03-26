@@ -1,6 +1,4 @@
-// web/src/components/animations/AnimationSection.tsx
-
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import type { ModeAnimationContent } from "./animation-content";
 import { ANIMATION_FPS, ANIMATION_DURATION_FRAMES } from "./animation-content";
@@ -9,40 +7,50 @@ interface AnimationSectionProps {
   content: ModeAnimationContent;
   composition: React.FC<{ content: ModeAnimationContent }>;
   onSkipToSearch: () => void;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function AnimationSection({ content, composition, onSkipToSearch }: AnimationSectionProps) {
+export function AnimationSection({
+  content,
+  composition,
+  onSkipToSearch,
+  scrollContainerRef,
+}: AnimationSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerRef>(null);
-  const [hasPlayed, setHasPlayed] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const wasVisible = useRef(false);
 
-  const handleIntersection = useCallback(
-    ([entry]: IntersectionObserverEntry[]) => {
-      const player = playerRef.current;
-      if (!player) return;
-
-      if (entry.isIntersecting) {
-        player.seekTo(0);
-        player.play();
-        setHasPlayed(true);
-      } else {
-        player.pause();
-      }
-    },
-    []
-  );
-
+  // Track visibility via IntersectionObserver
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
 
-    const observer = new IntersectionObserver(handleIntersection, {
-      threshold: 0.6,
-    });
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { root: scrollContainerRef?.current ?? null, threshold: 0.6 }
+    );
 
     observer.observe(section);
     return () => observer.disconnect();
-  }, [handleIntersection]);
+  }, [scrollContainerRef]);
+
+  // When section becomes visible again, restart; when hidden, pause
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    if (isVisible && wasVisible.current === false) {
+      // Just became visible — restart from beginning
+      player.seekTo(0);
+      player.play();
+    } else if (!isVisible && wasVisible.current === true) {
+      // Just became hidden — pause
+      player.pause();
+    }
+
+    wasVisible.current = isVisible;
+  }, [isVisible]);
 
   return (
     <div
@@ -91,7 +99,7 @@ export function AnimationSection({ content, composition, onSkipToSearch }: Anima
         {content.label}
       </div>
 
-      {/* Remotion Player */}
+      {/* Remotion Player — autoPlay ensures it starts, observer handles pause/restart */}
       <div style={{ flex: 1, width: "100%", maxWidth: 900, margin: "16px auto 0" }}>
         <Player
           ref={playerRef}
@@ -102,6 +110,8 @@ export function AnimationSection({ content, composition, onSkipToSearch }: Anima
           compositionWidth={900}
           compositionHeight={500}
           style={{ width: "100%", height: "100%" }}
+          autoPlay
+          acknowledgeRemotionLicense
         />
       </div>
 

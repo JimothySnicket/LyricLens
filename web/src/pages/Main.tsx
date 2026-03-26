@@ -436,6 +436,7 @@ export function Main() {
               content={animationContent[mode.key]}
               composition={mode.composition}
               onSkipToSearch={skipToSearch}
+              scrollContainerRef={containerRef}
             />
           </div>
         ))}

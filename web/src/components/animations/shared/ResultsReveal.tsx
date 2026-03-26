@@ -1,7 +1,6 @@
 // web/src/components/animations/shared/ResultsReveal.tsx
 
 import { interpolate, useCurrentFrame } from "remotion";
-import { ACT_2_END, ACT_3_END } from "../animation-content";
 import type { AnimationResult } from "../animation-content";
 
 interface ResultsRevealProps {
@@ -13,9 +12,9 @@ interface ResultsRevealProps {
 export function ResultsReveal({ results, verdict, accentColor }: ResultsRevealProps) {
   const frame = useCurrentFrame();
 
-  // Results fade in sequentially starting at ACT_2_END
-  const resultsStart = ACT_2_END;
-  const verdictStart = ACT_2_END + 50;
+  // Frame is relative to the Sequence this component is mounted in (starts at 0)
+  const resultsStart = 10;
+  const verdictStart = 50;
 
   return (
     <div
