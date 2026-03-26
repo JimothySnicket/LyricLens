@@ -151,7 +151,7 @@ export const animationContent: Record<string, ModeAnimationContent> = {
 };
 
 export const ANIMATION_FPS = 30;
-export const ANIMATION_DURATION_FRAMES = 300; // 10s at 30fps
+export const ANIMATION_DURATION_FRAMES = 1800; // 60s at 30fps — content finishes by frame 270, rest is hold
 
 // Phase boundaries in frames
 export const EXPLAIN_END = 90; // 0-3s: explanation appears
