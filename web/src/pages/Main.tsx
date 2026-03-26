@@ -12,6 +12,7 @@ import { SemanticAnimation } from "../components/animations/SemanticAnimation";
 import { HybridAnimation } from "../components/animations/HybridAnimation";
 import { NLAnimation } from "../components/animations/NLAnimation";
 import { Nav } from "../components/Nav";
+import { useTheme } from "../theme/ThemeProvider";
 
 // ---------------------------------------------------------------------------
 // Fade-in wrapper — triggers when element enters viewport
@@ -45,8 +46,29 @@ function Reveal({
 // Section 1: Intro
 // ---------------------------------------------------------------------------
 function IntroSection({ onSkipToSearch }: { onSkipToSearch: () => void }) {
+  const { theme, toggle } = useTheme();
+
   return (
     <div className="snap-section flex flex-col items-center justify-center text-center px-6 bg-(--color-bg) relative">
+      {/* Theme toggle — top right */}
+      <button
+        type="button"
+        onClick={toggle}
+        className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-(--color-bg-secondary) transition-colors text-(--color-text-tertiary) bg-transparent border-none cursor-pointer"
+        aria-label="Toggle theme"
+      >
+        {theme === "dark" ? (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="8" cy="8" r="3" />
+            <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M13.5 8.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" />
+          </svg>
+        )}
+      </button>
+
       <div className="relative">
         <h1 className="text-5xl md:text-6xl font-bold text-(--color-text) tracking-tight mb-6">
           Lyric<span className="text-(--color-text-secondary)">Lens</span>

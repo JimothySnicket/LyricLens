@@ -99,7 +99,7 @@ export function AnimationSection({
         {content.label}
       </div>
 
-      {/* Remotion Player — autoPlay ensures it starts, observer handles pause/restart */}
+      {/* Remotion Player — observer triggers play when section is scrolled into view */}
       <div style={{ flex: 1, width: "100%", maxWidth: 900, margin: "16px auto 0" }}>
         <Player
           ref={playerRef}
@@ -110,7 +110,6 @@ export function AnimationSection({
           compositionWidth={900}
           compositionHeight={500}
           style={{ width: "100%", height: "100%" }}
-          autoPlay
           acknowledgeRemotionLicense
         />
       </div>
