@@ -45,7 +45,9 @@ export function longestSequence(
   for (let len = queryWords.length; len >= 1; len--) {
     for (let start = 0; start <= queryWords.length - len; start++) {
       const phrase = queryWords.slice(start, start + len).join(" ");
-      if (lower.includes(phrase)) {
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`(?<![a-z])${escaped}(?![a-z])`, "i");
+      if (re.test(lower)) {
         return { length: len, phrase };
       }
     }
