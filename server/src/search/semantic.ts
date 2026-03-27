@@ -41,8 +41,8 @@ export async function semanticSearch(
   }
   const filter = must.length > 0 ? { must } : undefined;
 
-  // semanticText always has content now (parser doesn't consume words)
-  const queryText = parsed.semanticText || originalQuery;
+  // Use raw query for embedding — MiniLM embeds natural sentences better than keyword lists
+  const queryText = originalQuery || parsed.semanticText;
 
   // If there's truly nothing to embed, just scroll with filters
   if (!queryText.trim()) {
