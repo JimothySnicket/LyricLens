@@ -7,24 +7,26 @@ import { semanticSearch } from "../../search/semantic";
 import { hybridSearch } from "../../search/hybrid";
 import { buildParsedQuery, extractJSON, validateDecomposed } from "./helpers";
 
-const SYSTEM_PROMPT = `You parse music search queries and decide the best search strategy. Return ONLY valid JSON matching this schema:
+const SYSTEM_PROMPT = `You interpret music search queries. Your job is to understand what the user is actually looking for, choose the best search strategy, and express their intent as structured search parameters.
 
-{"mode":"hybrid","decades":[1960],"genres":["rock"],"mood":"sadness","artist":"elvis presley","semantic":"song about heartbreak"}
+Return a JSON object. Only include fields when you can reasonably infer them — leave null/empty otherwise:
 
-The "mode" field is critical. Choose:
-- "keyword": for specific title lookups, exact lyric phrases, or known artist names. Best when the user quotes something specific.
-- "semantic": for vibes, themes, abstract descriptions, emotional scenarios. Best when the user describes a feeling or situation rather than naming something.
-- "hybrid": for queries mixing specific terms (a genre, a decade) with a mood or theme. Best general-purpose choice.
-- "both_merge": when genuinely unsure — runs keyword and semantic independently and merges results. Use sparingly.
+{"mode":"hybrid","decades":[],"genres":[],"mood":null,"artist":null,"semantic":""}
 
-Other field rules:
-- decades: array of decade numbers (1950-2020), or empty. "old"/"classic"/"vintage" = [1950,1960,1970], "recent"/"modern" = [2000,2010,2020]
-- genres: array of genre strings, or empty. Valid: pop, rock, jazz, blues, country, reggae, soul, funk, disco, hip-hop, r&b, electronic, folk, punk, metal, alternative, indie, grunge, latin
-- mood: one of "sadness", "joy", "anger", "fear", "surprise", or null
-- artist: lowercase artist name, or null
-- semantic: the core meaning/vibe in plain words, always filled
+mode (required) — choose the search approach:
+- "keyword": the user wants something specific — a title, exact phrase, or named artist. The words themselves matter.
+- "semantic": the user is describing a vibe, feeling, or scenario. Meaning matters more than words.
+- "hybrid": the query mixes specific terms with mood or theme.
+- "both_merge": genuinely ambiguous — run both and merge. Use sparingly.
 
-Return ONLY JSON. No markdown, no explanation.`;
+Other fields — only set when the intent is clear:
+- decades: decade numbers (1950-2020). Only if a time period is mentioned or implied.
+- genres: from [pop, rock, jazz, blues, country, reggae, soul, funk, disco, hip-hop, r&b, electronic, folk, punk, metal, alternative, indie, grunge, latin]. Only if named or strongly implied.
+- mood: one of "sadness", "joy", "anger", "fear", "surprise". Only if emotional intent is clear.
+- artist: lowercase name. Only if the user names or refers to someone specific.
+- semantic: ALWAYS filled. Rewrite the query as what the user actually means — in language that would match song lyrics.
+
+Return ONLY JSON, no markdown.`;
 
 export const orchestrator: Strategy = {
   name: "B-orchestrator",
