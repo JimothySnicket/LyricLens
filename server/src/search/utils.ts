@@ -36,6 +36,17 @@ export interface SequenceMatch {
   phrase: string;
 }
 
+// Stop words only score when part of a sequence (len >= 2).
+// As single-word matches they're pure noise ("in" matches every song).
+const NOISE_WORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+  "of", "with", "by", "from", "is", "was", "are", "were", "be", "been",
+  "has", "have", "had", "do", "does", "did", "will", "would", "could",
+  "should", "may", "might", "can", "shall", "it", "its", "he", "she",
+  "him", "her", "his", "we", "our", "us", "my", "me", "i", "you", "your",
+  "they", "them", "their", "that", "this", "so", "than", "not", "no",
+]);
+
 export function longestSequence(
   queryWords: string[],
   text: string,
@@ -44,6 +55,8 @@ export function longestSequence(
   const lower = text.toLowerCase();
   for (let len = queryWords.length; len >= 1; len--) {
     for (let start = 0; start <= queryWords.length - len; start++) {
+      // Single stop words are noise — skip them
+      if (len === 1 && NOISE_WORDS.has(queryWords[start])) continue;
       const phrase = queryWords.slice(start, start + len).join(" ");
       const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const re = new RegExp(`(?<![a-z])${escaped}(?![a-z])`, "i");

@@ -67,4 +67,30 @@ describe("longestSequence", () => {
     expect(result.length).toBe(3);
     expect(result.phrase).toBe("love me tender");
   });
+
+  test("single stop words are skipped — 'in' alone is noise", () => {
+    const result = longestSequence(
+      ["in"],
+      "She was walking in the rain",
+    );
+    expect(result.length).toBe(0);
+  });
+
+  test("stop words still score when part of a sequence", () => {
+    const result = longestSequence(
+      ["dancing", "in", "the", "dark"],
+      "dancing in the dark",
+    );
+    expect(result.length).toBe(4);
+  });
+
+  test("stop word skipped falls through to next meaningful word", () => {
+    const result = longestSequence(
+      ["baby", "in"],
+      "Take Good Care Of My Baby",
+    );
+    // "in" alone is noise, but "baby" alone is meaningful
+    expect(result.length).toBe(1);
+    expect(result.phrase).toBe("baby");
+  });
 });
