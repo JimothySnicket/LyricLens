@@ -30,3 +30,25 @@ export function buildMatchReason(
   }
   return parts.join(" · ") || mode + " match";
 }
+
+export interface SequenceMatch {
+  length: number;
+  phrase: string;
+}
+
+export function longestSequence(
+  queryWords: string[],
+  text: string,
+): SequenceMatch {
+  if (queryWords.length === 0 || !text) return { length: 0, phrase: "" };
+  const lower = text.toLowerCase();
+  for (let len = queryWords.length; len >= 1; len--) {
+    for (let start = 0; start <= queryWords.length - len; start++) {
+      const phrase = queryWords.slice(start, start + len).join(" ");
+      if (lower.includes(phrase)) {
+        return { length: len, phrase };
+      }
+    }
+  }
+  return { length: 0, phrase: "" };
+}
