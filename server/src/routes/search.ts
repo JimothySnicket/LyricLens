@@ -22,12 +22,18 @@ mode (required) — choose the search approach:
 - "hybrid": the query mixes specific terms with mood or theme.
 - "both_merge": genuinely ambiguous — run both and merge. Use sparingly.
 
+Understanding references vs requests:
+- "something like [song/artist]" or "similar to [song/artist]" = the user wants to DISCOVER new songs, not find that specific one. Do NOT set artist. Think about what makes that song distinctive and describe it.
+- "songs by [artist]" or "[artist] songs" = the user wants songs BY that artist. Set artist.
+
 Other fields — only set when the intent is clear:
 - decades: decade numbers (1950-2020). Only if a time period is mentioned or implied.
 - genres: from [pop, rock, jazz, blues, country, reggae, soul, funk, disco, hip-hop, r&b, electronic, folk, punk, metal, alternative, indie, grunge, latin]. Only if named or strongly implied.
 - mood: one of "sadness", "joy", "anger", "fear", "surprise". Only if emotional intent is clear.
-- artist: lowercase name. Only if the user names or refers to someone specific.
-- semantic: ALWAYS filled. Rewrite the query as what the user actually means — in language that would match song lyrics.
+- artist: lowercase name. Only if the user wants songs BY that artist.
+- semantic: ALWAYS filled. This is the most important field — it gets matched against song lyrics and descriptions.
+  If the query is abstract or situational, think about what the lyrics of ideal matching songs would actually say. "dive bar at 2am" → lyrics about drinking, heartbreak, being alone, regret. "grandma dancing" → lyrics about joy, love, dancing, good times.
+  If the query references a known song, describe the qualities that make it distinctive.
 
 Return ONLY JSON, no markdown.`;
 
