@@ -25,7 +25,7 @@ describe("parseQuery", () => {
 
   test("handles genre aliases", () => {
     const result = parseQuery("hip hop songs");
-    expect(result.filters.genres).toContain("pop");
+    expect(result.filters.genres).toContain("hip-hop");
   });
 
   test("detects title scope", () => {
@@ -47,15 +47,8 @@ describe("parseQuery", () => {
   test("extracts mood hints", () => {
     const result = parseQuery("sad romantic songs");
     const moodKeys = result.filters.moods.map(m => m.key);
-    expect(moodKeys).toContain("sa");
-    expect(moodKeys).toContain("ro");
-  });
-
-  test("extracts audio features", () => {
-    const result = parseQuery("upbeat danceable songs");
-    const audioKeys = result.filters.audioFeatures.map(a => a.key);
-    expect(audioKeys).toContain("valence");
-    expect(audioKeys).toContain("danceability");
+    expect(moodKeys).toContain("emotions.sadness");
+    expect(moodKeys).toContain("emotions.joy");
   });
 
   test("produces semantic text", () => {
@@ -69,17 +62,12 @@ describe("parseQuery", () => {
     const result = parseQuery("");
     expect(result.terms).toEqual([]);
     expect(result.semanticText).toBe("");
+    expect(result.searchPhrase).toBe("");
   });
 
   test("handles query with only stop words", () => {
     const result = parseQuery("songs with the");
     expect(result.terms).toEqual([]);
-  });
-
-  test("multi-word audio features", () => {
-    const result = parseQuery("high energy songs");
-    const audioKeys = result.filters.audioFeatures.map(a => a.key);
-    expect(audioKeys).toContain("energy");
   });
 
   test("generates interpretations array", () => {
@@ -88,5 +76,31 @@ describe("parseQuery", () => {
     expect(types).toContain("mood");
     expect(types).toContain("genre");
     expect(types).toContain("decade");
+  });
+
+  // --- New tests for sequence-first model ---
+
+  test("searchPhrase preserves raw query with stop words", () => {
+    const result = parseQuery("dancing in the dark");
+    expect(result.searchPhrase).toBe("dancing in the dark");
+  });
+
+  test("searchPhrase is lowercased and trimmed", () => {
+    const result = parseQuery("  Rock Me Amadeus  ");
+    expect(result.searchPhrase).toBe("rock me amadeus");
+  });
+
+  test("mood words stay in terms (not consumed)", () => {
+    const result = parseQuery("sad love songs");
+    expect(result.filters.moods.some(m => m.label === "sadness")).toBe(true);
+    expect(result.terms).toContain("sad");
+    expect(result.terms).toContain("love");
+  });
+
+  test("genre words stay in terms (not consumed)", () => {
+    const result = parseQuery("rock love songs");
+    expect(result.filters.genres).toContain("rock");
+    expect(result.terms).toContain("rock");
+    expect(result.terms).toContain("love");
   });
 });

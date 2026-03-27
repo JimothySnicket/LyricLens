@@ -56,6 +56,7 @@ searchRoutes.post("/:mode", async (c) => {
             ? deepseekResult.artist.split(/\s+/)
             : [],
         },
+        searchPhrase: clean.toLowerCase().trim(),
         semanticText: deepseekResult.semantic,
         terms: deepseekResult.semantic.split(/\s+/).filter(t => t.length > 1),
         interpretations: [],

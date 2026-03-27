@@ -115,6 +115,7 @@ export function parseQuery(raw: string): ParsedQuery {
       audioFeatures: [],
       artistHint: [],
     },
+    searchPhrase: "",
     semanticText: "",
     terms: [],
     interpretations: [],
@@ -123,6 +124,7 @@ export function parseQuery(raw: string): ParsedQuery {
   if (!raw || !raw.trim()) return result;
 
   const lower = raw.toLowerCase().trim();
+  result.searchPhrase = lower;
 
   // ── 1. Decades (NLP-powered — handles "sixties", "80's", "1975", etc.) ──
   result.filters.decades = extractDecades(lower);
@@ -188,20 +190,12 @@ export function parseQuery(raw: string): ParsedQuery {
   const allWords = lower.split(/\s+/).filter(w => w.length > 1);
   const meaningful = allWords.filter(w => {
     const clean = w.replace(/[^a-z-]/g, "");
-    return clean.length > 1
-      && !STOP_WORDS.has(clean)
-      && !MOOD_MAP[clean]
-      && !result.filters.genres.includes(clean);
+    return clean.length > 1 && !STOP_WORDS.has(clean);
   });
   result.terms = meaningful;
 
-  // ── 7. Semantic text — ALL meaningful words from original query ──
-  const rawTokens = raw.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
-  const allMeaningful = rawTokens.filter(t => {
-    const clean = t.replace(/[^a-z'-]/g, "");
-    return clean.length > 1 && !STOP_WORDS.has(clean);
-  });
-  result.semanticText = allMeaningful.join(" ");
+  // ── 7. Semantic text — raw query for natural embedding (stop words preserved) ──
+  result.semanticText = lower;
 
   return result;
 }
