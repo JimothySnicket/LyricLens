@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { getSongs } from "../lib/data";
 import type { Song, SearchResult } from "../lib/types";
@@ -10,7 +10,7 @@ import { decomposer } from "./strategies/decomposer";
 import { orchestrator } from "./strategies/orchestrator";
 import { agentic } from "./strategies/agentic";
 import { reranker } from "./strategies/reranker";
-import { baselineQueriesRaw, type EvalQuery, type RawEvalQuery } from "./queries/baseline";
+import { baselineQueries, type EvalQuery } from "./queries/baseline";
 import { hardQueries } from "./queries/hard";
 
 // ---------------------------------------------------------------------------
@@ -18,26 +18,6 @@ import { hardQueries } from "./queries/hard";
 // ---------------------------------------------------------------------------
 const strategies: Strategy[] = [decomposer, orchestrator, agentic, reranker];
 const llms: LLMClient[] = [deepseekClient, geminiClient];
-
-// ---------------------------------------------------------------------------
-// Resolve raw (title, artist) expected results to song IDs
-// ---------------------------------------------------------------------------
-function resolveExpected(raw: RawEvalQuery[], songs: Song[]): EvalQuery[] {
-  return raw.map(rq => {
-    const ids: string[] = [];
-    for (const [titleHint, artistHint] of rq.expected) {
-      const tLower = titleHint.toLowerCase();
-      const aLower = artistHint.toLowerCase();
-      const match = songs.find(s => {
-        const titleMatch = s.title.toLowerCase().includes(tLower);
-        const artistMatch = !aLower || s.artist.toLowerCase().includes(aLower);
-        return titleMatch && artistMatch;
-      });
-      if (match) ids.push(match.id);
-    }
-    return { query: rq.query, category: rq.category, expected: ids };
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Metrics
@@ -176,16 +156,22 @@ async function main() {
   const songs = getSongs();
   console.log(`Loaded ${songs.length} songs.\n`);
 
-  const baseline = resolveExpected(baselineQueriesRaw, songs);
-  const unresolved = baseline.filter(q => q.expected.length === 0);
-  if (unresolved.length > 0) {
-    console.warn(`Warning: ${unresolved.length} baseline queries have 0 resolved expected IDs`);
-  }
-
+  // Filter to only queries with curated expected results
+  const baseline = baselineQueries.filter(q => q.expected.length > 0);
   const hard = hardQueries.filter(q => q.expected.length > 0);
+  const allQueries = [...baselineQueries, ...hardQueries];
+  const curated = allQueries.filter(q => q.expected.length > 0);
+  const uncurated = allQueries.length - curated.length;
 
-  console.log(`Baseline queries: ${baseline.length}`);
-  console.log(`Hard queries: ${hard.length} (${hardQueries.length - hard.length} awaiting curation)\n`);
+  console.log(`Total queries: ${allQueries.length} (${curated.length} curated, ${uncurated} awaiting curation)`);
+  console.log(`  Baseline: ${baselineQueries.length} (${baseline.length} curated)`);
+  console.log(`  Hard: ${hardQueries.length} (${hard.length} curated)\n`);
+
+  if (curated.length === 0) {
+    console.log("No curated queries yet. Run 'bun run server/src/eval/curate.ts' first.");
+    console.log("Then add expected song IDs to the query files.");
+    return;
+  }
 
   const allBaselineResults: ComboResult[] = [];
   const allHardResults: ComboResult[] = [];

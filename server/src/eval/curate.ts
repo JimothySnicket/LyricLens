@@ -11,20 +11,24 @@ import { orchestrator } from "./strategies/orchestrator";
 import { agentic } from "./strategies/agentic";
 import { reranker } from "./strategies/reranker";
 import { hardQueries } from "./queries/hard";
+import { baselineQueries, type EvalQuery } from "./queries/baseline";
 
 const strategies: Strategy[] = [decomposer, orchestrator, agentic, reranker];
 const llms: LLMClient[] = [deepseekClient, geminiClient];
 
 async function main() {
-  console.log("Hard Query Curation — Collecting Candidates\n");
+  console.log("Query Curation — Collecting Candidates\n");
+
+  const allQueries: EvalQuery[] = [...baselineQueries, ...hardQueries];
 
   const songs = getSongs();
   const curationData: Record<string, {
     query: string;
+    category: string;
     candidates: { id: string; title: string; artist: string; year: number; genre: string; foundBy: string[] }[];
   }> = {};
 
-  for (const q of hardQueries) {
+  for (const q of allQueries) {
     console.log(`\nQuery: "${q.query}"`);
     const candidateMap = new Map<string, {
       id: string; title: string; artist: string; year: number; genre: string; foundBy: string[];
@@ -64,7 +68,7 @@ async function main() {
     const candidates = [...candidateMap.values()]
       .sort((a, b) => b.foundBy.length - a.foundBy.length);
 
-    curationData[q.query] = { query: q.query, candidates };
+    curationData[q.query] = { query: q.query, category: q.category, candidates };
     console.log(`  ${candidates.length} unique candidates collected`);
   }
 
