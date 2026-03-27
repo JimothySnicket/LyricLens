@@ -1,121 +1,113 @@
 import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
 import { embedQuery } from "../lib/embedder";
-import { payloadToSong, buildMatchReason, longestSequence } from "./utils";
-import { GENRE_TO_QDRANT } from "../lib/nlp-helpers";
-import type { ParsedQuery, SearchResult } from "../lib/types";
+import { payloadToSong } from "./utils";
+import { keywordSearch } from "./keyword";
+import type { Song, ParsedQuery, SearchResult } from "../lib/types";
+
+const KEYWORD_WEIGHT = 0.4;
+const VECTOR_WEIGHT = 0.6;
+const VECTOR_LIMIT = 50;
 
 export async function hybridSearch(
   parsed: ParsedQuery,
   originalQuery: string,
-  limit = 20
+  songs: Song[],
+  limit = 20,
 ): Promise<{ results: SearchResult[]; totalFiltered: number }> {
-  const client = getQdrantClient();
+  // --- Leg 1: Keyword search (full scan, sequence scoring) ---
+  const keywordResults = keywordSearch(songs, parsed);
 
-  // Build Qdrant filter from ALL structured fields
+  // --- Leg 2: Vector search (unfiltered except artist) ---
+  const client = getQdrantClient();
   const must: any[] = [];
-  if (parsed.filters.decades.length > 0) {
-    must.push({ key: "decade", match: { any: parsed.filters.decades } });
-  }
-  if (parsed.filters.genres.length === 1) {
-    const g = GENRE_TO_QDRANT[parsed.filters.genres[0]] ?? parsed.filters.genres[0];
-    must.push({ key: "genre", match: { text: g } });
-  } else if (parsed.filters.genres.length > 1) {
-    must.push({
-      should: parsed.filters.genres.map(g => ({
-        key: "genre",
-        match: { text: GENRE_TO_QDRANT[g] ?? g },
-      })),
-    });
-  }
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
   }
-  for (const mood of parsed.filters.moods) {
-    if (mood.min !== undefined) {
-      must.push({ key: mood.key, range: { gte: mood.min } });
-    }
-  }
   const filter = must.length > 0 ? { must } : undefined;
 
-  // Count filtered pool
-  const countResult = filter
-    ? await client.count(COLLECTION_NAME, { filter, exact: true })
-    : { count: 723 };
-
-  // Use raw query for embedding — natural language embeds better than keyword soup
   const queryText = originalQuery || parsed.semanticText;
+  let vectorResults: { song: Song; score: number }[] = [];
 
-  if (!queryText.trim()) {
-    // Pure filter query — scroll with filters, sort by chart position
-    if (!filter) return { results: [], totalFiltered: 723 };
-    const scrollResult = await client.scroll(COLLECTION_NAME, {
+  if (queryText.trim()) {
+    const vector = await embedQuery(queryText);
+    const response = await client.query(COLLECTION_NAME, {
+      query: vector,
+      using: "summary",
       filter,
-      limit,
+      limit: VECTOR_LIMIT,
       with_payload: true,
     });
-    return {
-      results: scrollResult.points.map((point) => ({
-        song: payloadToSong(point.id, point.payload),
-        score: 0,
-        matchReason: buildMatchReason("hybrid", parsed, 0),
-        mode: "hybrid" as const,
-      })),
-      totalFiltered: countResult.count,
-    };
+    vectorResults = response.points.map((point) => ({
+      song: payloadToSong(point.id, point.payload),
+      score: point.score ?? 0,
+    }));
   }
 
-  // Over-fetch for re-ranking
-  const fetchLimit = Math.min(limit * 3, 60);
-  const vector = await embedQuery(queryText);
+  // --- Merge: union by song ID ---
+  const merged = new Map<string, {
+    song: Song;
+    keywordScore: number;
+    vectorScore: number;
+    keywordReason: string;
+  }>();
 
-  const response = await client.query(COLLECTION_NAME, {
-    query: vector,
-    using: "summary",
-    filter,
-    limit: fetchLimit,
-    with_payload: true,
-  });
+  // Normalize keyword scores to 0–1 range
+  const maxKeyword = keywordResults.length > 0
+    ? keywordResults[0].score
+    : 1;
 
-  const queryWords = parsed.searchPhrase
-    ? parsed.searchPhrase.split(/\s+/)
-    : [];
+  for (const kr of keywordResults) {
+    merged.set(kr.song.id, {
+      song: kr.song,
+      keywordScore: kr.score / maxKeyword,
+      vectorScore: 0,
+      keywordReason: kr.matchReason,
+    });
+  }
 
-  const results = response.points.map((point) => {
-    const song = payloadToSong(point.id, point.payload);
-    const vectorScore = point.score ?? 0;
+  for (const vr of vectorResults) {
+    const existing = merged.get(vr.song.id);
+    if (existing) {
+      // Song found by BOTH legs — strongest signal
+      existing.vectorScore = vr.score;
+    } else {
+      merged.set(vr.song.id, {
+        song: vr.song,
+        keywordScore: 0,
+        vectorScore: vr.score,
+        keywordReason: "",
+      });
+    }
+  }
 
-    // Sequence-based keyword bonus (n² scaled to vector range)
-    const titleMatch = longestSequence(queryWords, song.title);
-    const lyricsMatch = longestSequence(queryWords, song.lyrics);
-    const keywordBonus =
-      (titleMatch.length ** 2) * 0.015 +
-      (lyricsMatch.length ** 2) * 0.01;
+  // --- Score and rank ---
+  const results: SearchResult[] = [];
 
-    const blendedScore = vectorScore + keywordBonus;
+  for (const entry of merged.values()) {
+    const blended =
+      entry.keywordScore * KEYWORD_WEIGHT +
+      entry.vectorScore * VECTOR_WEIGHT;
 
-    // Build match reason
     const reasons: string[] = [];
-    if (titleMatch.length > 0) {
-      reasons.push(`"${titleMatch.phrase}" in title (${titleMatch.length}w)`);
+    if (entry.keywordScore > 0) {
+      reasons.push(entry.keywordReason);
     }
-    if (lyricsMatch.length > 0) {
-      reasons.push(`"${lyricsMatch.phrase}" in lyrics (${lyricsMatch.length}w)`);
+    if (entry.vectorScore > 0) {
+      reasons.push(`similarity: ${entry.vectorScore.toFixed(3)}`);
     }
-    const matchReason = buildMatchReason("hybrid", parsed, vectorScore) +
-      (reasons.length > 0 ? " · " + reasons.join(", ") : "");
 
-    return {
-      song,
-      score: blendedScore,
-      matchReason,
-      mode: "hybrid" as const,
-    };
-  });
+    results.push({
+      song: entry.song,
+      score: blended,
+      matchReason: reasons.join(" · ") || "hybrid match",
+      mode: "hybrid",
+    });
+  }
 
   results.sort((a, b) => b.score - a.score);
 
   return {
     results: results.slice(0, limit),
-    totalFiltered: countResult.count,
+    totalFiltered: songs.length,
   };
 }
