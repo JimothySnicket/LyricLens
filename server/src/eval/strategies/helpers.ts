@@ -38,10 +38,18 @@ export function buildParsedQuery(raw: string, decomposed: DecomposedQuery): Pars
 }
 
 export function extractJSON(text: string): any | null {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+  // Try object first, then array
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+
+  // Prefer whichever appears first in the string
+  const objIndex = objMatch ? text.indexOf(objMatch[0]) : Infinity;
+  const arrIndex = arrMatch ? text.indexOf(arrMatch[0]) : Infinity;
+
+  const candidate = objIndex <= arrIndex ? objMatch?.[0] : arrMatch?.[0];
+  if (!candidate) return null;
   try {
-    return JSON.parse(match[0]);
+    return JSON.parse(candidate);
   } catch {
     return null;
   }
