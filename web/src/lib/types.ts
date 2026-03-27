@@ -41,6 +41,7 @@ export interface ParsedQuery {
     audioFeatures: { key: string; label: string; min?: number; max?: number }[];
     artistHint: string[];
   };
+  searchPhrase: string;
   semanticText: string;
   terms: string[];
   interpretations: { type: string; label: string }[];
