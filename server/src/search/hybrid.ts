@@ -1,6 +1,6 @@
 import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
 import { embedQuery } from "../lib/embedder";
-import { payloadToSong, buildMatchReason } from "./utils";
+import { payloadToSong, buildMatchReason, longestSequence } from "./utils";
 import { GENRE_TO_QDRANT } from "../lib/nlp-helpers";
 import type { ParsedQuery, SearchResult } from "../lib/types";
 
@@ -42,8 +42,8 @@ export async function hybridSearch(
     ? await client.count(COLLECTION_NAME, { filter, exact: true })
     : { count: 723 };
 
-  // semanticText always has content now
-  const queryText = parsed.semanticText || originalQuery;
+  // Use raw query for embedding — natural language embeds better than keyword soup
+  const queryText = originalQuery || parsed.semanticText;
 
   if (!queryText.trim()) {
     // Pure filter query — scroll with filters, sort by chart position
@@ -76,25 +76,31 @@ export async function hybridSearch(
     with_payload: true,
   });
 
+  const queryWords = parsed.searchPhrase
+    ? parsed.searchPhrase.split(/\s+/)
+    : [];
+
   const results = response.points.map((point) => {
     const song = payloadToSong(point.id, point.payload);
     const vectorScore = point.score ?? 0;
 
-    // Blend keyword signals into the vector score
-    let keywordBonus = 0;
-    const reasons: string[] = [];
-
-    for (const term of parsed.terms) {
-      if (song.title.toLowerCase().includes(term)) {
-        keywordBonus += 0.05;
-        reasons.push(`"${term}" in title`);
-      }
-      if (song.lyrics.toLowerCase().includes(term)) {
-        keywordBonus += 0.02;
-      }
-    }
+    // Sequence-based keyword bonus (n² scaled to vector range)
+    const titleMatch = longestSequence(queryWords, song.title);
+    const lyricsMatch = longestSequence(queryWords, song.lyrics);
+    const keywordBonus =
+      (titleMatch.length ** 2) * 0.015 +
+      (lyricsMatch.length ** 2) * 0.01;
 
     const blendedScore = vectorScore + keywordBonus;
+
+    // Build match reason
+    const reasons: string[] = [];
+    if (titleMatch.length > 0) {
+      reasons.push(`"${titleMatch.phrase}" in title (${titleMatch.length}w)`);
+    }
+    if (lyricsMatch.length > 0) {
+      reasons.push(`"${lyricsMatch.phrase}" in lyrics (${lyricsMatch.length}w)`);
+    }
     const matchReason = buildMatchReason("hybrid", parsed, vectorScore) +
       (reasons.length > 0 ? " · " + reasons.join(", ") : "");
 
