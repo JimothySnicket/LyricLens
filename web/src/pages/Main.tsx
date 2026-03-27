@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, useInView } from "motion/react";
 import type { SearchMode, SearchResponse } from "../lib/types";
-import { searchAll } from "../lib/api";
+import { search } from "../lib/api";
 import { SearchBar } from "../components/SearchBar";
 import { QueryChips } from "../components/QueryChips";
 import { useSnapScroll } from "../hooks/useSnapScroll";
@@ -137,29 +137,52 @@ const MODES: SearchMode[] = ["keyword", "semantic", "hybrid", "natural"];
 
 function SearchSection() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Record<SearchMode, SearchResponse> | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<Partial<Record<SearchMode, SearchResponse>>>({});
+  const [loadingModes, setLoadingModes] = useState<Set<SearchMode>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  const loading = loadingModes.size > 0;
 
   async function handleSearch(q: string) {
     if (!q.trim()) return;
     setQuery(q);
-    setLoading(true);
+    setResults({});
+    setLoadingModes(new Set(MODES));
     setError(null);
     setExpanded(new Set());
     setSummary(null);
-    try {
-      const res = await searchAll(q);
-      setResults(res);
-      fetchSummary(q, res);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Search failed");
-      setResults(null);
-    } finally {
-      setLoading(false);
+
+    // Scroll to results after the summary box renders
+    requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    const collected: Partial<Record<SearchMode, SearchResponse>> = {};
+
+    const promises = MODES.map(async (mode) => {
+      try {
+        const res = await search(q, mode);
+        collected[mode] = res;
+        setResults((prev) => ({ ...prev, [mode]: res }));
+      } catch {
+        // Individual mode failure — leave it empty
+      } finally {
+        setLoadingModes((prev) => {
+          const next = new Set(prev);
+          next.delete(mode);
+          return next;
+        });
+      }
+    });
+
+    await Promise.all(promises);
+
+    if (Object.keys(collected).length > 0) {
+      fetchSummary(q, collected as Record<SearchMode, SearchResponse>);
     }
   }
 
@@ -194,7 +217,8 @@ function SearchSection() {
     });
   }
 
-  const hasResults = results !== null;
+  const hasResults = Object.keys(results).length > 0;
+  const searchActive = hasResults || loading;
   const parsed = results?.keyword?.parsedQuery ?? results?.semantic?.parsedQuery;
 
   return (
@@ -210,6 +234,9 @@ function SearchSection() {
             </h2>
             <p className="text-sm text-(--color-text-secondary)">
               Same query, four pipelines, side by side.
+            </p>
+            <p className="text-xs text-(--color-text-tertiary) mt-2">
+              2,742 Billboard Hot 100 hits with full lyrics · 1959–2023 · 131 genres
             </p>
           </div>
         </Reveal>
@@ -242,13 +269,6 @@ function SearchSection() {
         </div>
 
         {/* Loading */}
-        {loading && (
-          <div className="py-20 flex items-center justify-center gap-3">
-            <div className="w-4 h-4 rounded-full border-2 border-(--color-border) border-t-(--color-text) animate-spin" />
-            <span className="text-sm text-(--color-text-tertiary)">Searching all four pipelines…</span>
-          </div>
-        )}
-
         {/* Error */}
         {!loading && error && (
           <div className="max-w-2xl mx-auto rounded-lg border border-red-800 bg-red-950/30 px-4 py-3 mb-6">
@@ -257,45 +277,51 @@ function SearchSection() {
         )}
 
         {/* Query interpretation */}
-        {!loading && parsed && (
+        {parsed && (
           <div className="max-w-2xl mx-auto mb-6">
             <QueryChips interpretations={parsed.interpretations} />
           </div>
         )}
 
-        {/* Agentic summary */}
-        {!loading && hasResults && (
-          <Reveal className="max-w-3xl mx-auto mb-10">
-            {summaryLoading ? (
-              <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-6 py-5 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-3 h-3 rounded-full border border-(--color-border) border-t-(--color-text) animate-spin" />
-                  <span className="text-xs text-(--color-text-tertiary)">Generating comparative analysis…</span>
-                </div>
-              </div>
-            ) : summary ? (
-              <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-6 py-5">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-(--color-text-tertiary) mb-3">
-                  Comparative Analysis
-                </p>
-                <p className="text-sm text-(--color-text-secondary) leading-relaxed">
+        {/* Agentic summary — always in layout once search starts */}
+        {searchActive && (
+          <div ref={resultsRef} className="max-w-3xl mx-auto mb-10">
+            <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-6 py-5">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-(--color-text-tertiary) mb-3">
+                Insight
+              </p>
+              {summary ? (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-sm text-(--color-text-secondary) leading-relaxed"
+                >
                   {summary}
-                </p>
-              </div>
-            ) : null}
-          </Reveal>
+                </motion.p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border border-(--color-border) border-t-(--color-text) animate-spin" />
+                  <span className="text-xs text-(--color-text-tertiary)">
+                    {loading ? "Waiting for results…" : "Analyzing results…"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Four columns */}
-        {!loading && hasResults && (
+        {searchActive && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             {MODES.map((mode) => {
               const r = results[mode];
               const m = MODE_META[mode];
+              const modeLoading = loadingModes.has(mode);
               const count = r?.results?.length ?? 0;
 
               return (
-                <Reveal key={mode} delay={MODES.indexOf(mode) * 0.08}>
+                <Reveal key={mode} delay={modeLoading ? 0 : 0}>
                   <div className="flex flex-col h-full">
                     {/* Column header */}
                     <div className="px-4 py-3 border border-b-0 border-(--color-border) rounded-t-lg bg-(--color-bg-secondary)">
@@ -303,20 +329,25 @@ function SearchSection() {
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
                         <span className="text-sm font-semibold text-(--color-text)">{m.label}</span>
                         <span className="ml-auto text-[10px] text-(--color-text-tertiary) font-mono">
-                          {r?.searchTimeMs ?? 0}ms
+                          {modeLoading ? "" : `${r?.searchTimeMs ?? 0}ms`}
                         </span>
                       </div>
                       <p className="text-[10px] text-(--color-text-tertiary)">{m.desc}</p>
                       <p className="text-[10px] text-(--color-text-tertiary) mt-1">
-                        {count} results {r?.totalFiltered != null && `from ${r.totalFiltered}`}
+                        {modeLoading ? "\u00A0" : `${count} results${r?.totalFiltered != null ? ` from ${r.totalFiltered}` : ""}`}
                       </p>
                     </div>
 
                     {/* Results */}
                     <div className="flex-1 border border-t-0 border-(--color-border) rounded-b-lg overflow-hidden">
-                      {count > 0 ? (
+                      {modeLoading ? (
+                        <div className="px-4 py-10 flex items-center justify-center gap-2">
+                          <div className="w-3 h-3 rounded-full border border-(--color-border) border-t-(--color-text) animate-spin" />
+                          <span className="text-xs text-(--color-text-tertiary)">Searching…</span>
+                        </div>
+                      ) : count > 0 ? (
                         <div className="divide-y divide-(--color-border)">
-                          {r.results.slice(0, 8).map((res, i) => (
+                          {r!.results.slice(0, 8).map((res, i) => (
                             <ResultRow
                               key={`${mode}-${res.song.id}-${i}`}
                               result={res}

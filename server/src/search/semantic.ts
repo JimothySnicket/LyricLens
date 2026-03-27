@@ -7,7 +7,7 @@ export async function semanticSearch(
   parsed: ParsedQuery,
   originalQuery: string,
   limit = 20,
-): Promise<{ results: SearchResult[]; totalFiltered: number }> {
+): Promise<{ results: SearchResult[]; totalFiltered: number; timing?: { embedMs: number; qdrantMs: number } }> {
   const client = getQdrantClient();
 
   // No pre-filtering — let the vector do its job
@@ -19,9 +19,12 @@ export async function semanticSearch(
     return { results: [], totalFiltered: 2742 };
   }
 
+  const t0 = performance.now();
   const vector = await embedQuery(queryText);
+  const embedMs = Math.round(performance.now() - t0);
 
   // Query both vectors in parallel
+  const t1 = performance.now();
   const [lyricsResponse, summaryResponse] = await Promise.all([
     client.query(COLLECTION_NAME, {
       query: vector,
@@ -71,9 +74,11 @@ export async function semanticSearch(
     }
   }
 
+  const qdrantMs = Math.round(performance.now() - t1);
+
   const results = [...merged.values()]
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  return { results, totalFiltered: 2742 };
+  return { results, totalFiltered: 2742, timing: { embedMs, qdrantMs } };
 }

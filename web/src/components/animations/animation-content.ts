@@ -33,14 +33,25 @@ export interface ModeAnimationContent {
   limitationResults: LimitationResult[];
   limitationCaption: string;
 
-  // Hybrid-specific
+  // Hybrid-specific — three-way comparison (same query, different modes)
   filters?: { label: string; value: string }[];
   semanticRemainder?: string;
   filterCountBefore?: number;
   filterCountAfter?: number;
+  keywordOnlyResults?: LimitationResult[]; // keyword results for same query
+  semanticOnlyResults?: LimitationResult[]; // semantic results for same query
+  keywordCaption?: string;
+  semanticCaption?: string;
 
-  // Hybrid limitation-specific
+  // Hybrid limitation-specific (legacy)
   ambiguousWord?: string;
+
+  // NL-specific
+  llmExpansion?: string[]; // semantic terms the LLM generates
+  llmChosenMode?: string; // mode the LLM picked for success
+  limitationLlmChosenMode?: string; // mode the LLM picked for limitation
+  llmTimingMs?: number; // how long the LLM took (limitation)
+  keywordTimingMs?: number; // how fast keyword was (limitation)
 }
 
 export const animationContent: Record<string, ModeAnimationContent> = {
@@ -114,31 +125,32 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     fallbackColor: "#6a1b9a",
 
     explanation:
-      "Hybrid search gets the best of both \u2014 the regex parser pulls out structured filters like decade and genre, then vector search ranks what\u2019s left by meaning.",
-    successQuery: "sad rock from the 80s",
-    successTokens: ["80s", "rock"],
-    filters: [
-      { label: "decade", value: "1980s" },
-      { label: "genre", value: "rock" },
-    ],
-    semanticRemainder: "sad",
-    filterCountBefore: 2742,
-    filterCountAfter: 186,
+      "Keyword finds the words. Semantic finds the feeling. Hybrid runs both and merges the results \u2014 so you get precision and understanding in one search.",
+    successQuery: "heartbreak 90s r&b",
     successResults: [
-      { title: "Every Breath You Take", artist: "The Police", year: 1983 },
-      { title: "Total Eclipse of the Heart", artist: "Bonnie Tyler", year: 1983 },
+      { title: "Heartbreak Hotel", artist: "Whitney Houston", year: 1999 },
+      { title: "On Bended Knee", artist: "Boyz II Men", year: 1995 },
+      { title: "Another Sad Love Song", artist: "Toni Braxton", year: 1993 },
     ],
     successCaption:
-      "Filters narrowed the pool, meaning ranked what was left.",
+      "Title matches from keyword, emotional matches from semantic \u2014 merged.",
 
-    limitationQuery: "old songs about missing home",
-    ambiguousWord: "old",
-    limitationResults: [
-      { title: "Take Me Home, Country Roads", artist: "John Denver", year: 1971 },
-      { title: "Homeward Bound", artist: "Simon & Garfunkel", year: 1966 },
+    keywordOnlyResults: [
+      { title: "Heartbreak Hotel", artist: "Whitney Houston", year: 1999 },
+      { title: "Jump", artist: "Kris Kross", year: 1992 },
+      { title: "Dazzey Duks", artist: "Duice", year: 1993 },
     ],
-    limitationCaption:
-      "The parser doesn\u2019t know what \u2018old\u2019 means \u2014 it\u2019s not in its vocabulary.",
+    keywordCaption: "Found \u2018heartbreak\u2019 in titles, but Kris Kross and Duice aren\u2019t heartbreak songs.",
+    semanticOnlyResults: [
+      { title: "On Bended Knee", artist: "Boyz II Men", year: 1995 },
+      { title: "Another Sad Love Song", artist: "Toni Braxton", year: 1993 },
+      { title: "I Get Lonely", artist: "Janet", year: 1998 },
+    ],
+    semanticCaption: "Right feeling, but no title match \u2014 misses the obvious Heartbreak Hotel.",
+
+    limitationQuery: "",
+    limitationResults: [],
+    limitationCaption: "",
   },
 
   natural: {
@@ -150,13 +162,25 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     fallbackColor: "#2e7d32",
 
     explanation:
-      "LLM-powered query understanding \u2014 coming soon.",
-    successQuery: "",
-    successResults: [],
-    successCaption: "",
-    limitationQuery: "",
-    limitationResults: [],
-    limitationCaption: "",
+      "Sometimes a query isn\u2019t keywords or filters \u2014 it\u2019s a scene. An LLM interprets scenarios that no parser or embedding can handle alone.",
+    successQuery: "dive bar at 2am",
+    llmExpansion: ["drinking alone", "heartbreak", "regret", "loneliness", "whiskey", "neon lights", "last call"],
+    successResults: [
+      { title: "So Sick", artist: "Ne-Yo", year: 2006 },
+      { title: "Queen Of Hearts", artist: "Juice Newton", year: 1981 },
+      { title: "You Are Not Alone", artist: "Michael Jackson", year: 1995 },
+    ],
+    successCaption:
+      "The LLM understood the scene \u2014 no other mode could.",
+
+    limitationQuery: "dive bar at 2am",
+    limitationResults: [
+      { title: "West End Girls", artist: "Pet Shop Boys", year: 1986 },
+      { title: "Got Money", artist: "Lil Wayne feat. T-Pain", year: 2008 },
+      { title: "Fiesta", artist: "R. Kelly feat. Jay-Z", year: 2001 },
+    ],
+    limitationCaption:
+      "Keyword matched random words. Semantic found party songs. Neither understood the scene.",
   },
 };
 
@@ -164,7 +188,7 @@ export const ANIMATION_FPS = 30;
 export const ANIMATION_DURATION_FRAMES = 1800; // 60s at 30fps — content finishes by frame 270, rest is hold
 
 // Phase boundaries in frames
-export const EXPLAIN_END = 90; // 0-3s: explanation appears
-export const QUERY_SUCCESS_END = 210; // 3-7s: query enters + success results
-export const LIMITATION_END = 270; // 7-9s: limitation example
-// 9-10s: hold (270-300)
+export const EXPLAIN_END = 22; // 0-0.75s: explanation appears
+export const QUERY_SUCCESS_END = 142; // 0.75-4.75s: query enters + success results
+export const LIMITATION_END = 202; // 4.75-6.75s: limitation example
+// 6.75-7.5s: hold

@@ -18,8 +18,8 @@ Return a JSON object. Only include fields when you can reasonably infer them —
 
 mode (required) — choose the search approach:
 - "keyword": the user wants something specific — a title, exact phrase, or named artist. The words themselves matter.
-- "semantic": the user is describing a vibe, feeling, or scenario. Meaning matters more than words.
-- "hybrid": the query mixes specific terms with mood or theme.
+- "semantic": the user is describing a vibe, feeling, or scenario with NO structural filters. Only use if decades, genres, and artist are all empty.
+- "hybrid": the query has ANY structural element (decade, genre, artist, era) combined with meaning. If you set decades, genres, or artist, you must use hybrid or keyword — never semantic.
 - "both_merge": genuinely ambiguous — run both and merge. Use sparingly.
 
 Understanding references vs requests:
@@ -27,7 +27,7 @@ Understanding references vs requests:
 - "songs by [artist]" or "[artist] songs" = the user wants songs BY that artist. Set artist.
 
 Other fields — only set when the intent is clear:
-- decades: decade numbers (1950-2020). Only if a time period is mentioned or implied.
+- decades: decade numbers (1950-2020). Set when a time period is mentioned OR implied by temporal language. "old"/"classic"/"vintage"/"retro" → [1950,1960,1970]. "early 2000s" → [2000]. "before the 80s" → [1950,1960,1970]. "modern"/"recent"/"new" → [2010,2020]. Always translate temporal words into decades.
 - genres: from [pop, rock, jazz, blues, country, reggae, soul, funk, disco, hip-hop, r&b, electronic, folk, punk, metal, alternative, indie, grunge, latin]. Only if named or strongly implied.
 - mood: one of "sadness", "joy", "anger", "fear", "surprise". Only if emotional intent is clear.
 - artist: lowercase name. Only if the user wants songs BY that artist.
@@ -130,6 +130,7 @@ searchRoutes.post("/:mode", async (c) => {
   }
 
   const start = performance.now();
+  const timing: Record<string, number> = {};
   let parsed: ParsedQuery;
   let results;
   let totalFiltered = 2742;
@@ -149,14 +150,18 @@ searchRoutes.post("/:mode", async (c) => {
 
     let orchestratorResult: { mode: string; parsed: ParsedQuery } | null = null;
     try {
+      const t0 = performance.now();
       const raw = await callDeepSeek(ORCHESTRATOR_PROMPT, clean, 150);
+      timing.orchestratorMs = Math.round(performance.now() - t0);
       orchestratorResult = parseOrchestratorResponse(raw, clean);
     } catch {}
 
     if (orchestratorResult) {
       parsed = orchestratorResult.parsed;
       const songs = getSongs();
+      timing.chosenMode = orchestratorResult.mode as any;
 
+      const tSearch = performance.now();
       switch (orchestratorResult.mode) {
         case "keyword":
           results = keywordSearch(songs, parsed);
@@ -167,12 +172,14 @@ searchRoutes.post("/:mode", async (c) => {
           const semResult = await semanticSearch(parsed, parsed.semanticText);
           results = semResult.results;
           totalFiltered = semResult.totalFiltered;
+          if (semResult.timing) Object.assign(timing, semResult.timing);
           break;
         }
 
         case "both_merge": {
           const kw = keywordSearch(songs, parsed);
           const sem = await semanticSearch(parsed, parsed.semanticText);
+          if (sem.timing) Object.assign(timing, sem.timing);
           const merged = new Map<string, (typeof kw)[0]>();
           for (const r of kw) merged.set(r.song.id, r);
           for (const r of sem.results) {
@@ -194,6 +201,7 @@ searchRoutes.post("/:mode", async (c) => {
           break;
         }
       }
+      timing.searchMs = Math.round(performance.now() - tSearch);
     } else {
       // LLM failed — fall back to regex parser + hybrid
       parsed = parseQuery(query);
@@ -215,6 +223,7 @@ searchRoutes.post("/:mode", async (c) => {
       const semanticResult = await semanticSearch(parsed, query);
       results = semanticResult.results;
       totalFiltered = semanticResult.totalFiltered;
+      if (semanticResult.timing) Object.assign(timing, semanticResult.timing);
     } else {
       const songs = getSongs();
       const hybridResult = await hybridSearch(parsed, query, songs);
@@ -223,13 +232,18 @@ searchRoutes.post("/:mode", async (c) => {
     }
   }
 
+  const totalMs = Math.round(performance.now() - start);
+  timing.totalMs = totalMs;
+
+  console.log(`[${mode}] ${query} — ${JSON.stringify(timing)}`);
+
   const response: SearchResponse = {
     results,
     mode: mode as SearchMode,
     query,
     parsedQuery: parsed,
     totalFiltered,
-    searchTimeMs: Math.round(performance.now() - start),
+    searchTimeMs: totalMs,
   };
 
   return c.json(response);

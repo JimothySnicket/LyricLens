@@ -13,14 +13,13 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
   const frame = useCurrentFrame();
   const color = `var(${content.cssVar}, ${content.fallbackColor})`;
 
-  // --- Phase timings ---
+  // --- Explanation: 0 → EXPLAIN_END ---
   const explainOpacity = interpolate(frame, [0, 25], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // === LEFT COLUMN (Success) ===
-  // Query typewriter: 90-115
+  // --- Query typewriter ---
   const queryText = content.successQuery;
   const typeProgress = interpolate(frame, [EXPLAIN_END, EXPLAIN_END + 25], [0, queryText.length], {
     extrapolateLeft: "clamp",
@@ -28,107 +27,65 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
   });
   const visibleQuery = queryText.slice(0, Math.floor(typeProgress));
   const queryOpacity = frame >= EXPLAIN_END ? 1 : 0;
+  const typeEnd = EXPLAIN_END + 25;
 
-  // Words split into two groups: 115-140
-  const splitStart = EXPLAIN_END + 25;
-  const splitEnd = EXPLAIN_END + 50;
-  const splitProgress = interpolate(frame, [splitStart, splitEnd], [0, 1], {
+  // --- Three columns appear in sequence ---
+  const col1Start = typeEnd + 5;
+  const col2Start = col1Start + 40;
+  const col3Start = col2Start + 40;
+
+  const col1Opacity = interpolate(frame, [col1Start, col1Start + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const col2Opacity = interpolate(frame, [col2Start, col2Start + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const col3Opacity = interpolate(frame, [col3Start, col3Start + 12], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Filter counter: 140-160
-  const counterStart = EXPLAIN_END + 50;
-  const counterEnd = EXPLAIN_END + 70;
-  const counterProgress = interpolate(frame, [counterStart, counterEnd], [0, 1], {
+  // Results stagger within each column
+  const kw1Results = col1Start + 14;
+  const se1Results = col2Start + 14;
+  const hy1Results = col3Start + 14;
+
+  // Captions
+  const kwCaptionStart = kw1Results + 40;
+  const seCaptionStart = se1Results + 40;
+  const hyCaptionStart = hy1Results + 40;
+
+  const kwCaptionOpacity = interpolate(frame, [kwCaptionStart, kwCaptionStart + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const seCaptionOpacity = interpolate(frame, [seCaptionStart, seCaptionStart + 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const hyCaptionOpacity = interpolate(frame, [hyCaptionStart, hyCaptionStart + 12], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Semantic search within filtered: 160-180
-  const semanticStart = EXPLAIN_END + 70;
-  const semanticProgress = interpolate(frame, [semanticStart, semanticStart + 20], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Success results: 180-210
-  const resultsStart = EXPLAIN_END + 90;
-
-  // Column label opacities — appear with their content
-  const successLabelOpacity = interpolate(frame, [resultsStart, resultsStart + 12], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Success caption
-  const captionStart = resultsStart + 20;
-  const captionOpacity = interpolate(frame, [captionStart, captionStart + 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // === RIGHT COLUMN (Limitation) — appears after QUERY_SUCCESS_END ===
-  const rightColumnOpacity = interpolate(frame, [QUERY_SUCCESS_END, QUERY_SUCCESS_END + 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Limitation query: 210-235
-  const limQueryText = content.limitationQuery;
-  const limTypeProgress = interpolate(
-    frame,
-    [QUERY_SUCCESS_END, QUERY_SUCCESS_END + 25],
-    [0, limQueryText.length],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-  );
-  const visibleLimQuery = limQueryText.slice(0, Math.floor(limTypeProgress));
-
-  // "old" flashes with "?" : 235-250
-  const ambiguousStart = QUERY_SUCCESS_END + 25;
-  const ambiguousProgress = interpolate(frame, [ambiguousStart, ambiguousStart + 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Limitation column label opacity — appears when ambiguous content starts
-  const limLabelOpacity = interpolate(frame, [ambiguousStart, ambiguousStart + 12], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Limitation caption
-  const limCaptionStart = ambiguousStart + 15;
-  const limCaptionOpacity = interpolate(frame, [limCaptionStart, limCaptionStart + 15], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  const filters = content.filters ?? [];
-  const semanticRemainder = content.semanticRemainder ?? "";
-  const countBefore = content.filterCountBefore ?? 2742;
-  const countAfter = content.filterCountAfter ?? 186;
-
-  // Animated counter
-  const currentCount = Math.round(
-    interpolate(counterProgress, [0, 1], [countBefore, countAfter], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    })
-  );
+  const kwResults = content.keywordOnlyResults ?? [];
+  const seResults = content.semanticOnlyResults ?? [];
+  const hyResults = content.successResults;
 
   return (
     <AbsoluteFill
       style={{
         backgroundColor: "var(--color-bg)",
         fontFamily: "var(--font-sans)",
-        padding: "24px 32px",
+        padding: "24px 28px",
         display: "flex",
         flexDirection: "column",
         gap: 0,
       }}
     >
-      {/* Explanation — top centre, full width */}
+      {/* Explanation */}
       <div
         style={{
           opacity: explainOpacity,
@@ -138,338 +95,167 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
           color: "var(--color-text-secondary)",
           maxWidth: 700,
           alignSelf: "center",
-          marginBottom: 16,
+          marginBottom: 12,
         }}
       >
         {content.explanation}
       </div>
 
-      {/* Two-column container */}
+      {/* Query — single query for all three */}
+      <div style={{ opacity: queryOpacity, textAlign: "center" as const, marginBottom: 14 }}>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 15,
+            fontWeight: 600,
+            color: "var(--color-text)",
+          }}
+        >
+          {visibleQuery}
+          {frame >= EXPLAIN_END && frame < typeEnd && (
+            <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
+          )}
+        </span>
+      </div>
+
+      {/* Three-column comparison */}
       <div
         style={{
           display: "flex",
           flexDirection: "row",
-          gap: 24,
+          gap: 16,
           flex: 1,
           minHeight: 0,
         }}
       >
-        {/* LEFT COLUMN — Success */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: 0,
-            minWidth: 0,
-          }}
-        >
-          {/* Column label */}
+        {/* COLUMN 1 — Keyword */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, opacity: col1Opacity }}>
           <div
             style={{
-              opacity: successLabelOpacity,
               fontSize: 10,
               fontWeight: 700,
-              letterSpacing: 1.5,
+              letterSpacing: 1.2,
               textTransform: "uppercase" as const,
-              color: "#16a34a",
-              marginBottom: 8,
+              color: "#e65100",
+              marginBottom: 6,
             }}
           >
-            ✓ Works
+            Keyword alone
           </div>
-
-          {/* Success query — typewriter */}
-          <div
-            style={{
-              opacity: queryOpacity,
-              marginBottom: 8,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "var(--color-text)",
-              }}
-            >
-              {visibleQuery}
-              {frame >= EXPLAIN_END && frame < splitStart && (
-                <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
-              )}
-            </span>
-          </div>
-
-          {/* Two-panel split: Filters | Meaning */}
-          {splitProgress > 0 && (
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                width: "100%",
-                marginBottom: 10,
-              }}
-            >
-              {/* Filters panel */}
-              <div
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: 6,
-                  border: "1px solid var(--color-border)",
-                  backgroundColor: "var(--color-surface)",
-                  opacity: splitProgress,
-                  transform: `translateX(${interpolate(splitProgress, [0, 1], [-12, 0])}px)`,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase" as const,
-                    color: "var(--color-text-tertiary)",
-                    marginBottom: 6,
-                  }}
-                >
-                  Filters
-                </div>
-                {filters.map((f, i) => {
-                  const fOpacity = interpolate(
-                    splitProgress,
-                    [(i * 0.3) + 0.2, (i * 0.3) + 0.5],
-                    [0, 1],
-                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-                  );
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 11,
-                        padding: "2px 6px",
-                        marginBottom: 3,
-                        borderRadius: 3,
-                        opacity: fOpacity,
-                        color: "var(--color-text)",
-                        backgroundColor: `color-mix(in srgb, ${content.fallbackColor} 12%, transparent)`,
-                      }}
-                    >
-                      {f.label}: {f.value}
-                    </div>
-                  );
-                })}
-                {/* Counter */}
-                {counterProgress > 0 && (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: "var(--color-text-tertiary)",
-                      marginTop: 6,
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    {currentCount.toLocaleString()} songs
-                  </div>
-                )}
-              </div>
-
-              {/* Meaning panel */}
-              <div
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: 6,
-                  border: "1px solid var(--color-border)",
-                  backgroundColor: "var(--color-surface)",
-                  opacity: splitProgress,
-                  transform: `translateX(${interpolate(splitProgress, [0, 1], [12, 0])}px)`,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase" as const,
-                    color: "var(--color-text-tertiary)",
-                    marginBottom: 6,
-                  }}
-                >
-                  Meaning
-                </div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: content.fallbackColor,
-                    marginBottom: 4,
-                  }}
-                >
-                  {semanticRemainder}
-                </div>
-                {semanticProgress > 0.3 && (
-                  <div style={{ fontSize: 10, color: "var(--color-text-tertiary)" }}>
-                    Vector ranking within {countAfter} songs...
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Success results */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 5,
-              width: "100%",
-            }}
-          >
-            {content.successResults.map((r, i) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {kwResults.map((r, i) => (
               <SongCard
-                key={`s-${i}`}
+                key={`kw-${i}`}
+                title={r.title}
+                artist={r.artist}
+                year={r.year}
+                status={i === 0 ? "success" : "failure"}
+                frame={frame}
+                appearFrame={kw1Results + i * 10}
+              />
+            ))}
+          </div>
+          <div
+            style={{
+              opacity: kwCaptionOpacity,
+              fontSize: 10,
+              fontStyle: "italic",
+              color: "var(--color-text-tertiary)",
+              marginTop: 6,
+            }}
+          >
+            {content.keywordCaption}
+          </div>
+        </div>
+
+        {/* COLUMN 2 — Semantic */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, opacity: col2Opacity }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 1.2,
+              textTransform: "uppercase" as const,
+              color: "#1565c0",
+              marginBottom: 6,
+            }}
+          >
+            Semantic alone
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {seResults.map((r, i) => (
+              <SongCard
+                key={`se-${i}`}
                 title={r.title}
                 artist={r.artist}
                 year={r.year}
                 status="success"
                 frame={frame}
-                appearFrame={resultsStart + i * 10}
+                appearFrame={se1Results + i * 10}
               />
             ))}
           </div>
-
-          {/* Success caption */}
           <div
             style={{
-              opacity: captionOpacity,
-              fontSize: 11,
+              opacity: seCaptionOpacity,
+              fontSize: 10,
               fontStyle: "italic",
               color: "var(--color-text-tertiary)",
-              marginTop: 8,
+              marginTop: 6,
             }}
           >
-            {content.successCaption}
+            {content.semanticCaption}
           </div>
         </div>
 
-        {/* RIGHT COLUMN — Limitation */}
+        {/* COLUMN 3 — Hybrid (winner) */}
         <div
           style={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
-            gap: 0,
             minWidth: 0,
-            opacity: rightColumnOpacity,
+            opacity: col3Opacity,
+            borderLeft: `2px solid ${content.fallbackColor}`,
+            paddingLeft: 14,
           }}
         >
-          {/* Column label */}
           <div
             style={{
-              opacity: limLabelOpacity,
               fontSize: 10,
               fontWeight: 700,
-              letterSpacing: 1.5,
+              letterSpacing: 1.2,
               textTransform: "uppercase" as const,
-              color: "#dc2626",
-              marginBottom: 8,
+              color: content.fallbackColor,
+              marginBottom: 6,
             }}
           >
-            ✗ Struggles
+            {"\u2713"} Hybrid — both
           </div>
-
-          {/* Limitation query — typewriter */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {hyResults.map((r, i) => (
+              <SongCard
+                key={`hy-${i}`}
+                title={r.title}
+                artist={r.artist}
+                year={r.year}
+                status="success"
+                accentColor={content.fallbackColor}
+                frame={frame}
+                appearFrame={hy1Results + i * 10}
+              />
+            ))}
+          </div>
           <div
             style={{
-              marginBottom: 10,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "var(--color-text)",
-              }}
-            >
-              {visibleLimQuery}
-              {frame >= QUERY_SUCCESS_END && frame < ambiguousStart && (
-                <span style={{ opacity: frame % 16 < 8 ? 1 : 0, color }}>|</span>
-              )}
-            </span>
-          </div>
-
-          {/* Ambiguous word "old" with "?" */}
-          {content.ambiguousWord && ambiguousProgress > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 8,
-                opacity: ambiguousProgress,
-                flexWrap: "wrap",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#dc2626",
-                  padding: "2px 8px",
-                  borderRadius: 5,
-                  border: "1px dashed #dc2626",
-                  opacity: ambiguousProgress > 0.5
-                    ? (frame % 20 < 10 ? 1 : 0.6)
-                    : ambiguousProgress,
-                }}
-              >
-                {content.ambiguousWord}
-              </span>
-              <span style={{ fontSize: 18, color: "#dc2626", fontWeight: 700 }}>?</span>
-              <span style={{ fontSize: 10, color: "var(--color-text-tertiary)" }}>
-                doesn't map to a decade
-              </span>
-            </div>
-          )}
-
-          {/* Limitation results (empty for hybrid, but kept for consistency) */}
-          {content.limitationResults.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 5,
-                width: "100%",
-              }}
-            >
-              {content.limitationResults.map((r, i) => (
-                <SongCard
-                  key={`l-${i}`}
-                  title={r.title}
-                  artist={r.artist}
-                  year={r.year}
-                  status="failure"
-                  frame={frame}
-                  appearFrame={ambiguousStart + i * 12}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Limitation caption */}
-          <div
-            style={{
-              opacity: limCaptionOpacity,
-              fontSize: 11,
+              opacity: hyCaptionOpacity,
+              fontSize: 10,
               fontStyle: "italic",
               color: "var(--color-text-tertiary)",
-              marginTop: 8,
+              marginTop: 6,
             }}
           >
-            {content.limitationCaption}
+            {content.successCaption}
           </div>
         </div>
       </div>

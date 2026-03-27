@@ -69,7 +69,7 @@ export function AnimationSection({
       {/* Colored number badge */}
       <div
         style={{
-          marginTop: 32,
+          marginTop: 8,
           width: 36,
           height: 36,
           borderRadius: "50%",
@@ -100,7 +100,7 @@ export function AnimationSection({
       </div>
 
       {/* Remotion Player — observer triggers play when section is scrolled into view */}
-      <div style={{ flex: 1, width: "100%", maxWidth: 900, margin: "16px auto 0" }}>
+      <div style={{ flex: 1, width: "100%", maxWidth: 900, margin: "4px auto 0" }}>
         <Player
           ref={playerRef}
           component={composition}

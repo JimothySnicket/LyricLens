@@ -6,10 +6,10 @@ interface SearchBarProps {
 }
 
 const SUGGESTIONS = [
-  { q: "old songs about missing home", hint: "LLM interprets 'old' as era" },
-  { q: "songs that feel like driving at night", hint: "Semantic captures vibes" },
-  { q: "sad rock from the 80s", hint: "Mood + genre + decade" },
-  { q: "something like bohemian rhapsody", hint: "Artist, genre, and feel" },
+  { q: "baby in the title from the 60s", hint: "Exact words + structure" },
+  { q: "songs about heartbreak", hint: "Meaning over words" },
+  { q: "heartbreak 90s r&b", hint: "Mood + genre + decade" },
+  { q: "dive bar at 2am", hint: "Scenario \u2192 search terms" },
 ];
 
 export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
@@ -40,7 +40,7 @@ export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="songs that feel like driving at night..."
+          placeholder="dive bar at 2am..."
           className="flex-1 px-4 py-3 rounded-[var(--radius-md)] bg-(--color-surface) border border-(--color-border) text-(--color-text) placeholder:text-(--color-text-tertiary) text-base outline-none focus:border-(--color-accent) transition-colors"
         />
         <button

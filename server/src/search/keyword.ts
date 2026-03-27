@@ -6,6 +6,7 @@ const LYRICS_WEIGHT = 1.5;
 const ARTIST_WEIGHT = 2;
 const DECADE_BONUS = 2;
 const GENRE_BONUS = 2;
+const ARTIST_HINT_BONUS = 10;
 
 const MAX_RESULTS = 30;
 
@@ -26,16 +27,6 @@ export function keywordSearch(
   const results: SearchResult[] = [];
 
   for (const song of songs) {
-    // --- Hard filters: artist and decade only ---
-    if (artistHint.length > 0) {
-      const lowerArtist = song.artist.toLowerCase();
-      if (!artistHint.every((token) => lowerArtist.includes(token))) continue;
-    }
-
-    if (decades.length > 0 && !decades.includes(song.decade)) {
-      continue;
-    }
-
     // --- Sequence scoring ---
     const titleMatch = longestSequence(queryWords, song.title);
     const lyricsMatch = longestSequence(queryWords, song.lyrics);
@@ -51,7 +42,13 @@ export function keywordSearch(
     if (scopeLyrics && lyricsMatch.length === 0) continue;
     if (scopeArtist && artistHint.length === 0 && artistMatch.length === 0) continue;
 
-    // --- Filter bonuses (tiebreakers) ---
+    // --- Filter bonuses (additive, never exclusionary) ---
+    if (artistHint.length > 0) {
+      const lowerArtist = song.artist.toLowerCase();
+      if (artistHint.every((token) => lowerArtist.includes(token))) {
+        score += ARTIST_HINT_BONUS;
+      }
+    }
     if (decades.length > 0 && decades.includes(song.decade)) {
       score += DECADE_BONUS;
     }

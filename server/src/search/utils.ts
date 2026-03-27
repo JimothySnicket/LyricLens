@@ -47,6 +47,23 @@ const NOISE_WORDS = new Set([
   "they", "them", "their", "that", "this", "so", "than", "not", "no",
 ]);
 
+function isAlpha(code: number): boolean {
+  return (code >= 97 && code <= 122) || (code >= 65 && code <= 90);
+}
+
+/** Check if `phrase` appears in `lower` at a word boundary (both sides). */
+function hasPhrase(lower: string, phrase: string): boolean {
+  let pos = 0;
+  while (true) {
+    const idx = lower.indexOf(phrase, pos);
+    if (idx === -1) return false;
+    const before = idx > 0 ? lower.charCodeAt(idx - 1) : 0;
+    const after = idx + phrase.length < lower.length ? lower.charCodeAt(idx + phrase.length) : 0;
+    if (!isAlpha(before) && !isAlpha(after)) return true;
+    pos = idx + 1;
+  }
+}
+
 export function longestSequence(
   queryWords: string[],
   text: string,
@@ -58,9 +75,7 @@ export function longestSequence(
       // Single stop words are noise — skip them
       if (len === 1 && NOISE_WORDS.has(queryWords[start])) continue;
       const phrase = queryWords.slice(start, start + len).join(" ");
-      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const re = new RegExp(`(?<![a-z])${escaped}(?![a-z])`, "i");
-      if (re.test(lower)) {
+      if (hasPhrase(lower, phrase)) {
         return { length: len, phrase };
       }
     }
