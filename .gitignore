@@ -8,3 +8,4 @@ pipeline/.venv/
 *.npz
 .firecrawl/
 nul
+server/src/eval/results/
