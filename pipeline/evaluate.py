@@ -960,18 +960,18 @@ cluster_quality = {
 print("\nCalculating embedding coverage ...")
 
 total_lyrics = 0
-with open(os.path.join(DATA_RAW, "lyrics_db.csv"), encoding="utf-8", errors="replace", newline="") as f:
+with open(os.path.join(DATA_RAW, "all_songs_data.csv"), encoding="utf-8", errors="replace", newline="") as f:
     reader = csv.reader(f)
     for row in reader:
         total_lyrics += 1
 total_lyrics -= 1  # subtract header row
 
-matched = len(songs)  # 819 songs successfully merged
+matched = len(songs)
 coverage_rate = round(matched / total_lyrics, 4)
 
-print(f"  Total in lyrics_db: {total_lyrics}")
-print(f"  Matched & indexed:  {matched}")
-print(f"  Coverage rate:      {coverage_rate:.1%}")
+print(f"  Total in all_songs_data: {total_lyrics}")
+print(f"  Matched & indexed:       {matched}")
+print(f"  Coverage rate:           {coverage_rate:.1%}")
 
 embedding_coverage = {
     "total_lyrics": total_lyrics,
