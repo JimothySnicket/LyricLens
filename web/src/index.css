@@ -93,4 +93,6 @@ body {
 .snap-section-scrollable {
   min-height: 100vh;
   scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overscroll-behavior-y: contain;
 }

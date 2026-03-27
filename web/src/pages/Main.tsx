@@ -340,29 +340,7 @@ function SearchSection() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && !hasResults && !error && (
-          <Reveal>
-            <div className="max-w-2xl mx-auto pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { q: "old songs about missing home", hint: "'Old' is only understood by the LLM." },
-                { q: "songs that feel like driving at night", hint: "Semantic captures vibes keyword can't." },
-                { q: "sad rock from the 80s", hint: "Hybrid combines mood + genre + decade." },
-                { q: "something like bohemian rhapsody", hint: "The LLM extracts artist, genre, and feel." },
-              ].map((ex) => (
-                <button
-                  type="button"
-                  key={ex.q}
-                  onClick={() => handleSearch(ex.q)}
-                  className="text-left p-4 rounded-lg border border-(--color-border) hover:border-(--color-text-tertiary) transition-colors group"
-                >
-                  <span className="text-sm font-medium text-(--color-text) group-hover:text-(--color-text)">{ex.q}</span>
-                  <span className="block text-xs text-(--color-text-tertiary) mt-1">{ex.hint}</span>
-                </button>
-              ))}
-            </div>
-          </Reveal>
-        )}
+        {/* Empty state — suggestions are now in the SearchBar cards */}
       </div>
     </section>
   );

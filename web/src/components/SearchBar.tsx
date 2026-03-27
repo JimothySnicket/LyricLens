@@ -6,10 +6,10 @@ interface SearchBarProps {
 }
 
 const SUGGESTIONS = [
-  "baby in title, 60s",
-  "sad rock",
-  "by Michael Jackson",
-  "upbeat dance",
+  { q: "old songs about missing home", hint: "LLM interprets 'old' as era" },
+  { q: "songs that feel like driving at night", hint: "Semantic captures vibes" },
+  { q: "sad rock from the 80s", hint: "Mood + genre + decade" },
+  { q: "something like bohemian rhapsody", hint: "Artist, genre, and feel" },
 ];
 
 export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
@@ -27,9 +27,9 @@ export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
     }
   }
 
-  function handleSuggestion(suggestion: string) {
-    setQuery(suggestion);
-    onSearch(suggestion);
+  function handleSuggestion(q: string) {
+    setQuery(q);
+    onSearch(q);
   }
 
   return (
@@ -51,14 +51,20 @@ export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
         </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {SUGGESTIONS.map((suggestion) => (
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {SUGGESTIONS.map((s) => (
           <button
-            key={suggestion}
-            onClick={() => handleSuggestion(suggestion)}
-            className="px-3 py-1 rounded-full text-sm bg-(--color-accent-subtle) text-(--color-text-secondary) hover:text-(--color-text) hover:bg-(--color-bg-tertiary) border border-(--color-border-subtle) transition-colors"
+            key={s.q}
+            type="button"
+            onClick={() => handleSuggestion(s.q)}
+            className="text-left p-3 rounded-lg border border-(--color-border) hover:border-(--color-text-tertiary) transition-colors group"
           >
-            {suggestion}
+            <span className="block text-xs font-medium text-(--color-text) group-hover:text-(--color-text) leading-snug">
+              {s.q}
+            </span>
+            <span className="block text-[10px] text-(--color-text-tertiary) mt-1">
+              {s.hint}
+            </span>
           </button>
         ))}
       </div>
