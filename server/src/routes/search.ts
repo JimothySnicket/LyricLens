@@ -99,7 +99,7 @@ searchRoutes.post("/:mode", async (c) => {
     }
 
     // Natural mode uses hybrid search (filters + vector)
-    const hybridResult = await hybridSearch(parsed, query);
+    const hybridResult = await hybridSearch(parsed, query, getSongs());
     results = hybridResult.results;
     totalFiltered = hybridResult.totalFiltered;
   } else {
@@ -115,7 +115,8 @@ searchRoutes.post("/:mode", async (c) => {
       results = semanticResult.results;
       totalFiltered = semanticResult.totalFiltered;
     } else {
-      const hybridResult = await hybridSearch(parsed, query);
+      const songs = getSongs();
+      const hybridResult = await hybridSearch(parsed, query, songs);
       results = hybridResult.results;
       totalFiltered = hybridResult.totalFiltered;
     }
