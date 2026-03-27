@@ -10,11 +10,8 @@ export async function semanticSearch(
 ): Promise<{ results: SearchResult[]; totalFiltered: number }> {
   const client = getQdrantClient();
 
-  const must: any[] = [];
-  if (parsed.filters.artistHint.length > 0) {
-    must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
-  }
-  const filter = must.length > 0 ? { must } : undefined;
+  // No pre-filtering — let the vector do its job
+  const filter = undefined;
 
   const queryText = originalQuery || parsed.semanticText;
 
