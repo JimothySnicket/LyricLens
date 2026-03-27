@@ -99,7 +99,7 @@ export function checkRateLimit(ip: string): { allowed: boolean; reason?: string 
 // ---------------------------------------------------------------------------
 // DeepSeek API call
 // ---------------------------------------------------------------------------
-async function callDeepSeek(
+export async function callDeepSeek(
   systemPrompt: string,
   userMessage: string,
   maxTokens: number,

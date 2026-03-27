@@ -1,12 +1,114 @@
 import { Hono } from "hono";
 import { parseQuery } from "../lib/query-parser";
-import { parseWithDeepSeek, checkRateLimit, sanitizeInput } from "../lib/deepseek";
+import { checkRateLimit, sanitizeInput, callDeepSeek } from "../lib/deepseek";
 import { getSongs } from "../lib/data";
 import { keywordSearch } from "../search/keyword";
 import { semanticSearch } from "../search/semantic";
 import { hybridSearch } from "../search/hybrid";
 import type { SearchMode, SearchResponse, ParsedQuery } from "../lib/types";
 
+// ---------------------------------------------------------------------------
+// Orchestrator prompt — LLM interprets intent and picks search mode
+// ---------------------------------------------------------------------------
+const ORCHESTRATOR_PROMPT = `You interpret music search queries. Your job is to understand what the user is actually looking for, choose the best search strategy, and express their intent as structured search parameters.
+
+Return a JSON object. Only include fields when you can reasonably infer them — leave null/empty otherwise:
+
+{"mode":"hybrid","decades":[],"genres":[],"mood":null,"artist":null,"semantic":""}
+
+mode (required) — choose the search approach:
+- "keyword": the user wants something specific — a title, exact phrase, or named artist. The words themselves matter.
+- "semantic": the user is describing a vibe, feeling, or scenario. Meaning matters more than words.
+- "hybrid": the query mixes specific terms with mood or theme.
+- "both_merge": genuinely ambiguous — run both and merge. Use sparingly.
+
+Other fields — only set when the intent is clear:
+- decades: decade numbers (1950-2020). Only if a time period is mentioned or implied.
+- genres: from [pop, rock, jazz, blues, country, reggae, soul, funk, disco, hip-hop, r&b, electronic, folk, punk, metal, alternative, indie, grunge, latin]. Only if named or strongly implied.
+- mood: one of "sadness", "joy", "anger", "fear", "surprise". Only if emotional intent is clear.
+- artist: lowercase name. Only if the user names or refers to someone specific.
+- semantic: ALWAYS filled. Rewrite the query as what the user actually means — in language that would match song lyrics.
+
+Return ONLY JSON, no markdown.`;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const MOOD_TO_FILTER: Record<string, string> = {
+  sadness: "emotions.sadness",
+  joy: "emotions.joy",
+  anger: "emotions.anger",
+  fear: "emotions.fear",
+  surprise: "emotions.surprise",
+};
+
+const VALID_MOODS = new Set(Object.keys(MOOD_TO_FILTER));
+
+function parseOrchestratorResponse(
+  raw: string,
+  cleanQuery: string,
+): { mode: string; parsed: ParsedQuery } | null {
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  let data: any;
+  try {
+    data = JSON.parse(jsonMatch[0]);
+  } catch {
+    return null;
+  }
+
+  if (typeof data !== "object" || data === null) return null;
+
+  const mode = typeof data.mode === "string" ? data.mode : "hybrid";
+  const decades = Array.isArray(data.decades)
+    ? data.decades.filter((d: any) => typeof d === "number" && d >= 1950 && d <= 2020 && d % 10 === 0)
+    : [];
+  const genres = Array.isArray(data.genres)
+    ? data.genres.filter((g: any) => typeof g === "string")
+    : [];
+  const mood = typeof data.mood === "string" && VALID_MOODS.has(data.mood) ? data.mood : null;
+  const artist = typeof data.artist === "string" ? data.artist : null;
+  const semantic = typeof data.semantic === "string" && data.semantic.trim()
+    ? data.semantic
+    : cleanQuery;
+
+  const moods: ParsedQuery["filters"]["moods"] = [];
+  if (mood) {
+    moods.push({ key: MOOD_TO_FILTER[mood], label: mood, min: 0.2 });
+  }
+
+  const parsed: ParsedQuery = {
+    scopeTitle: false,
+    scopeLyrics: false,
+    scopeArtist: !!artist,
+    filters: {
+      decades,
+      genres,
+      moods,
+      audioFeatures: [],
+      artistHint: artist ? artist.split(/\s+/) : [],
+    },
+    searchPhrase: cleanQuery.toLowerCase().trim(),
+    semanticText: semantic,
+    terms: semantic.split(/\s+/).filter((t: string) => t.length > 1),
+    interpretations: [],
+  };
+
+  // Build interpretations for UI
+  for (const d of decades) parsed.interpretations.push({ type: "decade", label: `${d}s` });
+  for (const g of genres) parsed.interpretations.push({ type: "genre", label: g });
+  if (mood) parsed.interpretations.push({ type: "mood", label: mood });
+  if (artist) parsed.interpretations.push({ type: "artist", label: artist });
+  parsed.interpretations.push({ type: "mode", label: mode });
+  parsed.interpretations.push({ type: "parser", label: "AI-powered" });
+
+  return { mode, parsed };
+}
+
+// ---------------------------------------------------------------------------
+// Route
+// ---------------------------------------------------------------------------
 const searchRoutes = new Hono();
 
 searchRoutes.post("/:mode", async (c) => {
@@ -27,7 +129,7 @@ searchRoutes.post("/:mode", async (c) => {
   let totalFiltered = 2742;
 
   if (mode === "natural") {
-    // Pipeline 4: DeepSeek-powered query parsing
+    // Pipeline 4: LLM orchestrator — understands intent, picks search mode
     const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
     const rateCheck = checkRateLimit(ip);
     if (!rateCheck.allowed) {
@@ -39,69 +141,62 @@ searchRoutes.post("/:mode", async (c) => {
       return c.json({ error: "Invalid query" }, 400);
     }
 
-    const deepseekResult = await parseWithDeepSeek(clean);
+    let orchestratorResult: { mode: string; parsed: ParsedQuery } | null = null;
+    try {
+      const raw = await callDeepSeek(ORCHESTRATOR_PROMPT, clean, 150);
+      orchestratorResult = parseOrchestratorResponse(raw, clean);
+    } catch {}
 
-    if (deepseekResult) {
-      // Convert DeepSeek result to ParsedQuery format
-      parsed = {
-        scopeTitle: false,
-        scopeLyrics: false,
-        scopeArtist: !!deepseekResult.artist,
-        filters: {
-          decades: deepseekResult.decades,
-          genres: deepseekResult.genres,
-          moods: [],
-          audioFeatures: [],
-          artistHint: deepseekResult.artist
-            ? deepseekResult.artist.split(/\s+/)
-            : [],
-        },
-        searchPhrase: clean.toLowerCase().trim(),
-        semanticText: deepseekResult.semantic,
-        terms: deepseekResult.semantic.split(/\s+/).filter(t => t.length > 1),
-        interpretations: [],
-      };
+    if (orchestratorResult) {
+      parsed = orchestratorResult.parsed;
+      const songs = getSongs();
 
-      // Add mood as emotion filter
-      const moodToFilter: Record<string, string> = {
-        sadness: "emotions.sadness",
-        joy: "emotions.joy",
-        anger: "emotions.anger",
-        fear: "emotions.fear",
-        surprise: "emotions.surprise",
-      };
-      if (deepseekResult.mood && moodToFilter[deepseekResult.mood]) {
-        parsed.filters.moods.push({
-          key: moodToFilter[deepseekResult.mood],
-          label: deepseekResult.mood,
-          min: 0.2,
-        });
-      }
+      switch (orchestratorResult.mode) {
+        case "keyword":
+          results = keywordSearch(songs, parsed);
+          totalFiltered = songs.length;
+          break;
 
-      // Build interpretations for UI
-      for (const d of parsed.filters.decades) {
-        parsed.interpretations.push({ type: "decade", label: `${d}s` });
+        case "semantic": {
+          const semResult = await semanticSearch(parsed, parsed.semanticText);
+          results = semResult.results;
+          totalFiltered = semResult.totalFiltered;
+          break;
+        }
+
+        case "both_merge": {
+          const kw = keywordSearch(songs, parsed);
+          const sem = await semanticSearch(parsed, parsed.semanticText);
+          const merged = new Map<string, (typeof kw)[0]>();
+          for (const r of kw) merged.set(r.song.id, r);
+          for (const r of sem.results) {
+            const existing = merged.get(r.song.id);
+            if (!existing || r.score > existing.score) {
+              merged.set(r.song.id, r);
+            }
+          }
+          results = [...merged.values()].sort((a, b) => b.score - a.score).slice(0, 20);
+          totalFiltered = songs.length;
+          break;
+        }
+
+        case "hybrid":
+        default: {
+          const hybridResult = await hybridSearch(parsed, parsed.semanticText, songs);
+          results = hybridResult.results;
+          totalFiltered = hybridResult.totalFiltered;
+          break;
+        }
       }
-      for (const g of parsed.filters.genres) {
-        parsed.interpretations.push({ type: "genre", label: g });
-      }
-      if (deepseekResult.mood) {
-        parsed.interpretations.push({ type: "mood", label: deepseekResult.mood });
-      }
-      if (deepseekResult.artist) {
-        parsed.interpretations.push({ type: "artist", label: deepseekResult.artist });
-      }
-      parsed.interpretations.push({ type: "parser", label: "AI-powered" });
     } else {
-      // DeepSeek failed — fall back to regex parser
+      // LLM failed — fall back to regex parser + hybrid
       parsed = parseQuery(query);
       parsed.interpretations.push({ type: "parser", label: "fallback (regex)" });
+      const songs = getSongs();
+      const hybridResult = await hybridSearch(parsed, query, songs);
+      results = hybridResult.results;
+      totalFiltered = hybridResult.totalFiltered;
     }
-
-    // Natural mode uses hybrid search (filters + vector)
-    const hybridResult = await hybridSearch(parsed, query, getSongs());
-    results = hybridResult.results;
-    totalFiltered = hybridResult.totalFiltered;
   } else {
     // Pipelines 1-3: regex parser
     parsed = parseQuery(query);

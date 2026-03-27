@@ -6,12 +6,10 @@ import type { ParsedQuery, SearchResult } from "../lib/types";
 export async function semanticSearch(
   parsed: ParsedQuery,
   originalQuery: string,
-  limit = 20
+  limit = 20,
 ): Promise<{ results: SearchResult[]; totalFiltered: number }> {
   const client = getQdrantClient();
 
-  // Only filter on artist — "by prince" is unambiguous intent.
-  // Everything else (decade, genre, mood) the vector handles semantically.
   const must: any[] = [];
   if (parsed.filters.artistHint.length > 0) {
     must.push({ key: "artist", match: { text: parsed.filters.artistHint.join(" ") } });
@@ -26,21 +24,59 @@ export async function semanticSearch(
 
   const vector = await embedQuery(queryText);
 
-  const response = await client.query(COLLECTION_NAME, {
-    query: vector,
-    using: "summary",
-    filter,
-    limit,
-    with_payload: true,
-  });
+  // Query both vectors in parallel
+  const [lyricsResponse, summaryResponse] = await Promise.all([
+    client.query(COLLECTION_NAME, {
+      query: vector,
+      using: "lyrics",
+      filter,
+      limit,
+      with_payload: true,
+    }),
+    client.query(COLLECTION_NAME, {
+      query: vector,
+      using: "summary",
+      filter,
+      limit,
+      with_payload: true,
+    }),
+  ]);
 
-  return {
-    results: response.points.map((point) => ({
-      song: payloadToSong(point.id, point.payload),
+  // Merge by song ID — keep whichever score is higher
+  const merged = new Map<string, SearchResult>();
+
+  for (const point of lyricsResponse.points) {
+    const song = payloadToSong(point.id, point.payload);
+    merged.set(song.id, {
+      song,
       score: point.score ?? 0,
-      matchReason: `similarity: ${(point.score ?? 0).toFixed(3)}`,
+      matchReason: `lyrics: ${(point.score ?? 0).toFixed(3)}`,
       mode: "semantic" as const,
-    })),
-    totalFiltered: 2742,
-  };
+    });
+  }
+
+  for (const point of summaryResponse.points) {
+    const song = payloadToSong(point.id, point.payload);
+    const score = point.score ?? 0;
+    const existing = merged.get(song.id);
+    if (!existing || score > existing.score) {
+      merged.set(song.id, {
+        song,
+        score,
+        matchReason: existing
+          ? `lyrics: ${existing.score.toFixed(3)} · summary: ${score.toFixed(3)}`
+          : `summary: ${score.toFixed(3)}`,
+        mode: "semantic" as const,
+      });
+    } else if (existing) {
+      // Song found in both — note it in the reason
+      existing.matchReason = `lyrics: ${existing.score.toFixed(3)} · summary: ${score.toFixed(3)}`;
+    }
+  }
+
+  const results = [...merged.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return { results, totalFiltered: 2742 };
 }
