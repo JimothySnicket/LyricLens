@@ -97,11 +97,20 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       z: startEye.z + delta.z,
     };
 
-    const duration = 500;
+    const duration = 800;
+    const frameInterval = 33; // ~30fps — Plotly.relayout is expensive per call
     const startTime = performance.now();
+    let lastFrame = 0;
 
-    function step() {
-      const elapsed = performance.now() - startTime;
+    function step(now: number) {
+      // Throttle to ~30fps to avoid overloading Plotly's renderer
+      if (now - lastFrame < frameInterval) {
+        animRef.current = requestAnimationFrame(step);
+        return;
+      }
+      lastFrame = now;
+
+      const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
       const eased = easeOutCubic(t);
       const center = lerp3(startCenter, targetCenter, eased);
