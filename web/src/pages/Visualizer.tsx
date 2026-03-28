@@ -371,7 +371,6 @@ export function Visualizer() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [genreDrillDown, setGenreDrillDown] = useState<string | null>(null);
   const [selected, setSelected] = useState<VizPoint | null>(null);
-  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [query, setQuery] = useState("");
   const [projecting, setProjecting] = useState(false);
   const [projection, setProjection] = useState<ProjectionResult | null>(null);
@@ -415,7 +414,7 @@ export function Visualizer() {
 
   function handleSelect(point: VizPoint) {
     setSelected(point);
-    setFocusPoint({ x: point.x, y: point.y, z: point.z });
+
   }
 
   function handleSelectById(id: string) {
@@ -436,7 +435,7 @@ export function Visualizer() {
       const result = await projectQuery(query.trim());
       setProjection(result);
       setSelected(null);
-      setFocusPoint({ x: result.x, y: result.y, z: result.z });
+
     } catch {
       setProjection(null);
     } finally {
@@ -570,7 +569,7 @@ export function Visualizer() {
                   : null
               }
               dimmedIds={dimmedIds}
-              focusPoint={focusPoint}
+
 
             />
           )}
