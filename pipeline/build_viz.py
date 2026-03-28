@@ -63,7 +63,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 3. KMeans — cluster on original 384-dim embeddings
     # ------------------------------------------------------------------
-    print("\nRunning KMeans (n_clusters=8) on original embeddings ...")
+    print("\nRunning KMeans (n_clusters=10) on original embeddings ...")
     kmeans = KMeans(n_clusters=10, random_state=42, n_init="auto")
     cluster_labels: np.ndarray = kmeans.fit_predict(embeddings)  # shape (819,)
     print(f"  Unique clusters  : {sorted(set(cluster_labels.tolist()))}")
