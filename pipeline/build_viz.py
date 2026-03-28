@@ -13,7 +13,7 @@ import time
 from collections import Counter
 
 import numpy as np
-from numpy.linalg import norm
+
 from sklearn.cluster import KMeans
 from umap import UMAP
 
@@ -33,7 +33,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     print(f"Loading embeddings from {EMBEDDINGS_PATH} ...")
     data = np.load(EMBEDDINGS_PATH)
-    embeddings: np.ndarray = data["embeddings"]  # shape (819, 384)
+    embeddings: np.ndarray = data["embeddings"]  # shape (N, 768)
     print(f"  Embeddings shape : {embeddings.shape}")
 
     print(f"\nLoading songs from {SONGS_PATH} ...")
@@ -57,7 +57,7 @@ def main() -> None:
         random_state=42,
     )
     t0 = time.time()
-    coords_3d: np.ndarray = reducer.fit_transform(embeddings)  # shape (819, 3)
+    coords_3d: np.ndarray = reducer.fit_transform(embeddings)  # shape (N, 3)
     umap_elapsed = time.time() - t0
     print(f"  UMAP completed in {umap_elapsed:.1f}s")
     print(f"  Output shape     : {coords_3d.shape}")
@@ -67,7 +67,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("\nRunning KMeans (n_clusters=10) on original embeddings ...")
     kmeans = KMeans(n_clusters=10, random_state=42, n_init="auto")
-    cluster_labels: np.ndarray = kmeans.fit_predict(embeddings)  # shape (819,)
+    cluster_labels: np.ndarray = kmeans.fit_predict(embeddings)  # shape (N,)
     print(f"  Unique clusters  : {sorted(set(cluster_labels.tolist()))}")
 
     # ------------------------------------------------------------------
