@@ -63,9 +63,10 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y;
       if (p.z < zMin) zMin = p.z; if (p.z > zMax) zMax = p.z;
     }
+    const maxRange = Math.max(xMax - xMin, yMax - yMin, zMax - zMin) || 1;
     return {
       cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2, cz: (zMin + zMax) / 2,
-      rx: xMax - xMin || 1, ry: yMax - yMin || 1, rz: zMax - zMin || 1,
+      maxRange,
     };
   }, [points]);
 
@@ -77,11 +78,13 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     cancelAnimationFrame(animRef.current);
     const el = plotRef.current;
 
-    // Convert data coords → normalized scene coords (Plotly's internal [-0.5, 0.5] domain)
+    // Convert data coords → normalized scene coords
+    // Plotly uses uniform scaling (cube mode): same divisor for all axes
+    const s = dataExtents.maxRange;
     const targetCenter: Vec3 = {
-      x: (focusPoint.x - dataExtents.cx) / dataExtents.rx,
-      y: (focusPoint.y - dataExtents.cy) / dataExtents.ry,
-      z: (focusPoint.z - dataExtents.cz) / dataExtents.rz,
+      x: (focusPoint.x - dataExtents.cx) / s,
+      y: (focusPoint.y - dataExtents.cy) / s,
+      z: (focusPoint.z - dataExtents.cz) / s,
     };
 
     // Get current camera state
