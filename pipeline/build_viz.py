@@ -17,6 +17,44 @@ import numpy as np
 from sklearn.cluster import KMeans
 from umap import UMAP
 
+
+def get_meta_genre(genre: str) -> str:
+    """Map compound genre string to one of 10 meta-genres."""
+    first = genre.split("/")[0].strip() if "/" in genre else genre.strip()
+    ROCK = {
+        "Rock", "Pop Rock", "Soft Rock", "Hard Rock", "Alternative Rock",
+        "Rock and Roll", "Glam Rock", "Punk Rock", "Blues Rock", "Folk Rock",
+        "Progressive Rock", "Garage Rock", "Country Rock", "Grunge",
+        "Nu Metal", "Art Rock", "Pop Punk", "Alternative",
+    }
+    POP = {
+        "Pop", "Latin Pop", "Instrumental Pop", "Vocal Pop", "Indie Pop",
+        "Alternative Pop", "Folk Pop", "K-Pop", "Synth-pop",
+    }
+    RNB = {"R&B", "Soul", "Funk", "Neo-Soul"}
+    ELECTRONIC = {"Disco", "New Wave", "Drum and Bass"}
+    LATIN = {"Reggaeton", "Reggae Fusion", "Salsa"}
+    WORLD = {"Afrobeats", "Exotica"}
+    if first in ROCK:
+        return "Rock"
+    if first in POP:
+        return "Pop"
+    if first in RNB:
+        return "R&B"
+    if first == "Hip-Hop":
+        return "Hip-Hop"
+    if first == "Country":
+        return "Country"
+    if first in ELECTRONIC:
+        return "Electronic"
+    if first == "Folk":
+        return "Folk"
+    if first in LATIN:
+        return "Latin"
+    if first in WORLD:
+        return "World"
+    return "Other"
+
 # ---------------------------------------------------------------------------
 # Paths (resolved from project root regardless of cwd)
 # ---------------------------------------------------------------------------
@@ -120,6 +158,7 @@ def main() -> None:
                 "title": song.get("title", ""),
                 "artist": song.get("artist", ""),
                 "genre": song.get("genre", ""),
+            "metaGenre": get_meta_genre(song.get("genre", "")),
                 "year": song.get("year"),
                 "decade": song.get("decade"),
                 "chartPosition": song.get("chart_position"),
