@@ -170,102 +170,7 @@ function useDimmedIds(
 }
 
 /* -------------------------------------------------------------------------- */
-/*  LegendPanel                                                               */
-/* -------------------------------------------------------------------------- */
-
-function LegendPanel({
-  lens,
-  items,
-  activeFilter,
-  genreDrillDown,
-  onItemClick,
-  onBack,
-}: {
-  lens: Lens;
-  items: LegendItem[];
-  activeFilter: string | null;
-  genreDrillDown: string | null;
-  onItemClick: (key: string) => void;
-  onBack: () => void;
-}) {
-  const title = genreDrillDown
-    ? genreDrillDown
-    : lens === "genre"
-      ? "Genres"
-      : lens === "decade"
-        ? "Decades"
-        : "Clusters";
-
-  return (
-    <div>
-      {/* Back button for genre drill-down */}
-      {genreDrillDown && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-1 text-[11px] text-(--color-accent) hover:text-(--color-accent-hover) transition-colors mb-2 cursor-pointer"
-        >
-          <span>&#9664;</span> All Genres
-        </button>
-      )}
-
-      {/* Section title */}
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-2">
-        {title}
-      </p>
-
-      {/* Legend items */}
-      <div className="space-y-0.5">
-        {items.map((item) => {
-          const isActive = activeFilter === item.key;
-          const isDimmed = activeFilter != null && !isActive;
-          const showDrillArrow = lens === "genre" && !genreDrillDown;
-
-          return (
-            <button
-              type="button"
-              key={item.key}
-              onClick={() => onItemClick(item.key)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) transition-colors cursor-pointer text-left ${
-                isActive
-                  ? "bg-(--color-accent-subtle)"
-                  : "hover:bg-(--color-bg-tertiary)"
-              } ${isDimmed ? "opacity-40" : ""}`}
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="text-xs text-(--color-text) flex-1 min-w-0 truncate">
-                {item.label}
-              </span>
-              <span className="text-[10px] text-(--color-text-tertiary) tabular-nums shrink-0">
-                {item.count}
-              </span>
-              {showDrillArrow && (
-                <span className="text-[10px] text-(--color-text-tertiary) shrink-0">&#9654;</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Clear filter */}
-      {activeFilter && (
-        <button
-          type="button"
-          onClick={() => onItemClick(activeFilter)}
-          className="mt-2 text-[11px] text-(--color-text-tertiary) hover:text-(--color-text-secondary) transition-colors cursor-pointer"
-        >
-          Clear filter
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  SongDetail                                                                */
+/*  SongDetail (right panel)                                                  */
 /* -------------------------------------------------------------------------- */
 
 function SongDetail({
@@ -279,10 +184,10 @@ function SongDetail({
   onSelectId: (id: string) => void;
   onDismiss: () => void;
 }) {
-  // State 1: projection without a selected point
+  // Projection results (no song selected)
   if (!point && projection) {
     return (
-      <div className="space-y-4">
+      <div className="p-4 space-y-4">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
@@ -324,16 +229,22 @@ function SongDetail({
     );
   }
 
-  // State 2: nothing selected
-  if (!point) return null;
+  // Nothing selected
+  if (!point) {
+    return (
+      <div className="flex items-center justify-center h-full text-xs text-(--color-text-tertiary) px-4">
+        Click a point to explore
+      </div>
+    );
+  }
 
-  // State 3: selected point detail
+  // Song detail
   const emotionEntries = Object.entries(point.emotions)
     .filter(([, v]) => v > 0.01)
     .sort(([, a], [, b]) => b - a);
 
   return (
-    <div className="space-y-4">
+    <div className="p-4 space-y-4">
       {/* Header with dismiss */}
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -349,12 +260,12 @@ function SongDetail({
         </button>
       </div>
 
-      {/* Chips: year, genre, chart position */}
+      {/* Metadata chips */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs px-1.5 py-0.5 rounded-(--radius-sm) bg-(--color-bg-secondary) text-(--color-text-secondary)">
           {point.year}
         </span>
-        <span className="text-xs px-1.5 py-0.5 rounded-(--radius-sm) bg-(--color-bg-secondary) text-(--color-text-secondary) capitalize">
+        <span className="text-xs px-1.5 py-0.5 rounded-(--radius-sm) bg-(--color-bg-secondary) text-(--color-text-secondary)">
           {point.genre}
         </span>
         {point.chartPosition > 0 && (
@@ -366,13 +277,13 @@ function SongDetail({
 
       {/* Emotion bars */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1.5">
           Emotions
         </p>
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {emotionEntries.map(([emotion, value]) => (
             <div key={emotion} className="flex items-center gap-2">
-              <span className="text-[11px] text-(--color-text-secondary) w-16 capitalize shrink-0">
+              <span className="text-[10px] text-(--color-text-secondary) w-14 capitalize shrink-0 text-right">
                 {emotion}
               </span>
               <div className="flex-1 h-1.5 rounded-full bg-(--color-bg-secondary) overflow-hidden">
@@ -384,7 +295,7 @@ function SongDetail({
                   }}
                 />
               </div>
-              <span className="text-[10px] text-(--color-text-tertiary) w-8 text-right tabular-nums">
+              <span className="text-[10px] text-(--color-text-tertiary) w-7 text-right tabular-nums">
                 {(value * 100).toFixed(0)}%
               </span>
             </div>
@@ -398,17 +309,17 @@ function SongDetail({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
             Summary
           </p>
-          <p className="text-xs text-(--color-text-secondary) leading-relaxed">{point.summary}</p>
+          <p className="text-[11px] text-(--color-text-secondary) leading-relaxed">{point.summary}</p>
         </div>
       )}
 
       {/* Nearest neighbors */}
       {point.neighbors.length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-2">
-            Nearest neighbors
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1.5">
+            Nearest Neighbors
           </p>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {point.neighbors.slice(0, 5).map((n, i) => (
               <button
                 type="button"
@@ -421,7 +332,7 @@ function SongDetail({
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-(--color-text) truncate">{n.title}</p>
-                  <p className="text-[11px] text-(--color-text-tertiary) truncate">{n.artist}</p>
+                  <p className="text-[10px] text-(--color-text-tertiary) truncate">{n.artist}</p>
                 </div>
                 <span className="text-[10px] text-(--color-text-tertiary) tabular-nums shrink-0">
                   {(n.sim * 100).toFixed(0)}%
@@ -447,6 +358,7 @@ export function Visualizer() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [genreDrillDown, setGenreDrillDown] = useState<string | null>(null);
   const [selected, setSelected] = useState<VizPoint | null>(null);
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [query, setQuery] = useState("");
   const [projecting, setProjecting] = useState(false);
   const [projection, setProjection] = useState<ProjectionResult | null>(null);
@@ -454,7 +366,6 @@ export function Visualizer() {
   const legendItems = useLegendItems(points, lens, genreDrillDown);
   const dimmedIds = useDimmedIds(points, lens, activeFilter, genreDrillDown);
 
-  // Filtered count for display
   const filteredCount = useMemo(() => {
     if (!activeFilter) return points.length;
     return points.length - (dimmedIds?.size ?? 0);
@@ -462,10 +373,7 @@ export function Visualizer() {
 
   useEffect(() => {
     getVizData()
-      .then((data) => {
-        setPoints(data);
-        setLoading(false);
-      })
+      .then((data) => { setPoints(data); setLoading(false); })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Failed to load viz data");
         setLoading(false);
@@ -479,13 +387,11 @@ export function Visualizer() {
   }
 
   function handleLegendItemClick(key: string) {
-    // Genre top-level: drill down instead of filtering
     if (lens === "genre" && !genreDrillDown) {
       setGenreDrillDown(key);
       setActiveFilter(null);
       return;
     }
-    // Toggle active filter
     setActiveFilter((prev) => (prev === key ? null : key));
   }
 
@@ -496,6 +402,7 @@ export function Visualizer() {
 
   function handleSelect(point: VizPoint) {
     setSelected(point);
+    setFocusPoint({ x: point.x, y: point.y, z: point.z });
   }
 
   function handleSelectById(id: string) {
@@ -506,6 +413,7 @@ export function Visualizer() {
   function handleDismiss() {
     setSelected(null);
     setProjection(null);
+    setFocusPoint(null);
   }
 
   async function handleProject() {
@@ -515,6 +423,7 @@ export function Visualizer() {
       const result = await projectQuery(query.trim());
       setProjection(result);
       setSelected(null);
+      setFocusPoint({ x: result.x, y: result.y, z: result.z });
     } catch {
       setProjection(null);
     } finally {
@@ -522,11 +431,13 @@ export function Visualizer() {
     }
   }
 
+  // Whether the panel has content to show
+  const hasDetail = selected || projection;
+
   return (
     <div className="flex flex-col h-[calc(100vh-56px)] pt-14">
-      {/* Controls bar */}
+      {/* Row 1: Lens selector + query */}
       <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3">
-        {/* Left: lens toggle + count */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-(--color-bg-secondary) rounded-(--radius-sm) p-0.5">
             {LENS_OPTIONS.map((opt) => (
@@ -553,7 +464,6 @@ export function Visualizer() {
           </span>
         </div>
 
-        {/* Right: query projection */}
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -574,24 +484,71 @@ export function Visualizer() {
         </div>
       </div>
 
-      {/* Main split */}
+      {/* Row 2: Legend chips + emotion key */}
+      <div className="px-4 py-1.5 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center gap-2 overflow-x-auto">
+        {/* Back button for genre drill-down */}
+        {genreDrillDown && (
+          <button
+            type="button"
+            onClick={handleBack}
+            className="text-[11px] text-(--color-accent) hover:text-(--color-accent-hover) transition-colors cursor-pointer shrink-0 mr-1"
+          >
+            &#9664; All
+          </button>
+        )}
+
+        {/* Legend items as chips */}
+        {legendItems.map((item) => {
+          const isActive = activeFilter === item.key;
+          const isDimmed = activeFilter != null && !isActive;
+          return (
+            <button
+              type="button"
+              key={item.key}
+              onClick={() => handleLegendItemClick(item.key)}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] shrink-0 transition-colors cursor-pointer border ${
+                isActive
+                  ? "border-(--color-accent) bg-(--color-accent-subtle) text-(--color-text)"
+                  : isDimmed
+                    ? "border-transparent opacity-40 text-(--color-text-secondary) hover:opacity-70"
+                    : "border-transparent text-(--color-text-secondary) hover:bg-(--color-bg-secondary)"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+              <span className="truncate max-w-[120px]">{item.label}</span>
+              <span className="text-(--color-text-tertiary) tabular-nums">{item.count}</span>
+            </button>
+          );
+        })}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Emotion key */}
+        <div className="flex items-center gap-2 shrink-0 pl-2 border-l border-(--color-border-subtle)">
+          {EMOTION_KEYS.map((e) => (
+            <div key={e} className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: EMOTION_COLORS[e] }} />
+              <span className="text-[9px] text-(--color-text-tertiary) capitalize">{e}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main content */}
       <div className="flex flex-1 min-h-0">
-        {/* 3D plot (left) */}
+        {/* 3D plot */}
         <div className="flex-1 relative">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-sm text-(--color-text-secondary)">Loading embedding data...</div>
             </div>
           )}
-
           {error && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-sm text-(--color-warning) bg-(--color-warning-bg) px-4 py-3 rounded-(--radius-md)">
-                {error}
-              </div>
+              <div className="text-sm text-(--color-warning) bg-(--color-warning-bg) px-4 py-3 rounded-(--radius-md)">{error}</div>
             </div>
           )}
-
           {!loading && !error && points.length > 0 && (
             <EmbeddingViz
               points={points}
@@ -603,55 +560,22 @@ export function Visualizer() {
                   : null
               }
               dimmedIds={dimmedIds}
+              focusPoint={focusPoint}
             />
           )}
         </div>
 
-        {/* Right panel */}
-        <div className="w-[340px] max-lg:w-[280px] max-md:hidden flex-shrink-0 flex flex-col border-l border-(--color-border) bg-(--color-surface)">
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
-            {/* Legend panel */}
-            <LegendPanel
-              lens={lens}
-              items={legendItems}
-              activeFilter={activeFilter}
-              genreDrillDown={genreDrillDown}
-              onItemClick={handleLegendItemClick}
-              onBack={handleBack}
+        {/* Right panel — song detail only */}
+        {hasDetail && (
+          <div className="w-[320px] max-lg:w-[280px] max-md:hidden flex-shrink-0 border-l border-(--color-border) bg-(--color-surface) overflow-y-auto">
+            <SongDetail
+              point={selected}
+              projection={projection}
+              onSelectId={handleSelectById}
+              onDismiss={handleDismiss}
             />
-
-            {/* Emotion key — always visible */}
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-2">
-                Emotion colors
-              </p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {EMOTION_KEYS.map((e) => (
-                  <div key={e} className="flex items-center gap-1">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: EMOTION_COLORS[e] }}
-                    />
-                    <span className="text-[10px] text-(--color-text-tertiary) capitalize">{e}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Song detail / projection */}
-            {(selected || projection) && (
-              <>
-                <div className="border-t border-(--color-border)" />
-                <SongDetail
-                  point={selected}
-                  projection={projection}
-                  onSelectId={handleSelectById}
-                  onDismiss={handleDismiss}
-                />
-              </>
-            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

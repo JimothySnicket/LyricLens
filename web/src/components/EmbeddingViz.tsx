@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
@@ -15,6 +15,7 @@ interface Props {
   selectedId?: string;
   projectedPoint?: { x: number; y: number; z: number; label: string } | null;
   dimmedIds?: Set<string> | null;
+  focusPoint?: { x: number; y: number; z: number } | null;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -27,11 +28,39 @@ const EMOTION_COLORS: Record<string, string> = {
   neutral: "#9ca3af",
 };
 
-export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds }: Props) {
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
+  const plotRef = useRef<any>(null);
+
+  // Animate camera to focusPoint when it changes
+  useEffect(() => {
+    if (!focusPoint || !plotRef.current?.el) return;
+
+    const el = plotRef.current.el;
+    const currentCamera = el._fullLayout?.scene?._scene?.getCamera?.();
+
+    // Calculate camera position: keep same viewing angle, re-center on target
+    const distance = 8;
+    const eye = currentCamera?.eye ?? { x: 1.5, y: 1.5, z: 1.2 };
+
+    // Normalize the eye direction vector and scale to fixed distance from target
+    const dx = eye.x - (currentCamera?.center?.x ?? 0);
+    const dy = eye.y - (currentCamera?.center?.y ?? 0);
+    const dz = eye.z - (currentCamera?.center?.z ?? 0);
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+
+    Plotly.relayout(el, {
+      "scene.camera.center": { x: focusPoint.x, y: focusPoint.y, z: focusPoint.z },
+      "scene.camera.eye": {
+        x: focusPoint.x + (dx / len) * distance,
+        y: focusPoint.y + (dy / len) * distance,
+        z: focusPoint.z + (dz / len) * distance,
+      },
+    });
+  }, [focusPoint]);
+
   const { traces } = useMemo(() => {
     const hasDimming = dimmedIds != null && dimmedIds.size > 0;
 
-    // Split points into bright and dimmed sets
     const bright: VizPoint[] = [];
     const dimmed: VizPoint[] = [];
 
@@ -76,7 +105,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       } as Plotly.Data;
     });
 
-    // Dimmed trace: grey, low opacity, no hover
+    // Dimmed trace
     if (dimmed.length > 0) {
       traces.push({
         type: "scatter3d" as const,
@@ -179,6 +208,10 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     if (found) onSelect(found);
   }
 
+  const handleInit = useCallback((_figure: any, graphDiv: any) => {
+    plotRef.current = { el: graphDiv };
+  }, []);
+
   return (
     <Plot
       data={traces}
@@ -187,6 +220,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       style={{ width: "100%", height: "100%" }}
       useResizeHandler
       onClick={handleClick}
+      onInitialized={handleInit}
     />
   );
 }
