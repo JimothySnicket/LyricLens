@@ -73,3 +73,11 @@ export interface VizData {
     neighbors: VizNeighbor[];
   }[];
 }
+
+export interface ProjectionResult {
+  x: number;
+  y: number;
+  z: number;
+  query: string;
+  nearest: { id: string; title: string; artist: string; sim: number }[];
+}

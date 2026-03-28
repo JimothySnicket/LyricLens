@@ -16,6 +16,7 @@ interface Props {
   colorBy: ColorBy;
   onSelect: (point: VizPoint) => void;
   selectedId?: string;
+  projectedPoint?: { x: number; y: number; z: number; label: string } | null;
 }
 
 // Genre colors matching CSS vars
@@ -66,7 +67,7 @@ function getPointColor(point: VizPoint, colorBy: ColorBy): string {
   return palette[point.cluster % palette.length];
 }
 
-export function EmbeddingViz({ points, colorBy, onSelect, selectedId }: Props) {
+export function EmbeddingViz({ points, colorBy, onSelect, selectedId, projectedPoint }: Props) {
   const { traces } = useMemo(() => {
     // Group points by their color key for efficient rendering
     const groups = new Map<string, VizPoint[]>();
@@ -107,8 +108,30 @@ export function EmbeddingViz({ points, colorBy, onSelect, selectedId }: Props) {
       } as Plotly.Data;
     });
 
+    if (projectedPoint) {
+      traces.push({
+        type: "scatter3d" as const,
+        mode: "markers+text" as const,
+        name: "Query",
+        x: [projectedPoint.x],
+        y: [projectedPoint.y],
+        z: [projectedPoint.z],
+        text: [projectedPoint.label],
+        textposition: "top center",
+        textfont: { size: 10, color: "#22d3ee", family: "Inter, sans-serif" },
+        hovertemplate: "%{text}<extra>Query Projection</extra>",
+        marker: {
+          size: 12,
+          color: "#22d3ee",
+          opacity: 1,
+          symbol: "diamond",
+          line: { width: 2, color: "#ffffff" },
+        },
+      } as Plotly.Data);
+    }
+
     return { traces };
-  }, [points, colorBy, selectedId]);
+  }, [points, colorBy, selectedId, projectedPoint]);
 
   const layout = useMemo(
     (): Partial<Plotly.Layout> => ({

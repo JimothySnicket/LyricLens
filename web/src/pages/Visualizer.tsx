@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { EmbeddingViz } from "../components/EmbeddingViz";
-import { getVizData } from "../lib/api";
-import type { VizData } from "../lib/types";
+import { getVizData, projectQuery } from "../lib/api";
+import type { VizData, ProjectionResult } from "../lib/types";
 
 type ColorBy = "genre" | "decade" | "emotion" | "cluster";
 type VizPoint = VizData["points"][number];
@@ -86,7 +86,37 @@ function useClusterInfo(points: VizPoint[]): ClusterInfo[] {
 /*  SongTab                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function SongTab({ point }: { point: VizPoint | null }) {
+function SongTab({ point, projection }: { point: VizPoint | null; projection: ProjectionResult | null }) {
+  if (!point && projection) {
+    return (
+      <div className="p-4 space-y-4 overflow-y-auto h-full">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
+            Query Projection
+          </p>
+          <p className="text-sm font-medium text-[#22d3ee]">"{projection.query}"</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-2">
+            Nearest Songs
+          </p>
+          <div className="space-y-1.5">
+            {projection.nearest.map((n, i) => (
+              <div key={n.id} className="flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) bg-(--color-bg-tertiary)">
+                <span className="text-[10px] font-mono font-semibold text-(--color-text-tertiary) w-4 text-center">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-(--color-text) truncate">{n.title}</p>
+                  <p className="text-[10px] text-(--color-text-tertiary)">{n.artist}</p>
+                </div>
+                <span className="text-[10px] font-mono text-(--color-text-tertiary)">{n.sim.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!point) {
     return (
       <div className="flex items-center justify-center h-full text-xs text-(--color-text-tertiary)">
@@ -399,6 +429,9 @@ export function Visualizer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("song");
+  const [query, setQuery] = useState("");
+  const [projecting, setProjecting] = useState(false);
+  const [projection, setProjection] = useState<ProjectionResult | null>(null);
 
   const clusters = useClusterInfo(points);
 
@@ -417,6 +450,19 @@ export function Visualizer() {
   function handleSelect(point: VizPoint) {
     setSelected(point);
     setTab("song");
+  }
+
+  async function handleProject() {
+    if (!query.trim() || projecting) return;
+    setProjecting(true);
+    try {
+      const result = await projectQuery(query.trim());
+      setProjection(result);
+    } catch {
+      setProjection(null);
+    } finally {
+      setProjecting(false);
+    }
   }
 
   const TAB_OPTIONS: { value: Tab; label: string }[] = [
@@ -455,6 +501,26 @@ export function Visualizer() {
             </button>
           ))}
         </div>
+
+        {/* Query projection */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleProject()}
+            placeholder="Project a query..."
+            className="text-xs px-3 py-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-accent) w-48"
+          />
+          <button
+            type="button"
+            onClick={handleProject}
+            disabled={projecting || !query.trim()}
+            className="text-xs px-3 py-1.5 rounded-(--radius-sm) bg-(--color-accent) text-(--color-text-inverse) hover:bg-(--color-accent-hover) transition-colors disabled:opacity-40"
+          >
+            {projecting ? "..." : "Project"}
+          </button>
+        </div>
       </div>
 
       {/* Main split */}
@@ -481,6 +547,7 @@ export function Visualizer() {
               colorBy={colorBy}
               onSelect={handleSelect}
               selectedId={selected?.id}
+              projectedPoint={projection ? { x: projection.x, y: projection.y, z: projection.z, label: projection.query } : null}
             />
           )}
         </div>
@@ -507,7 +574,7 @@ export function Visualizer() {
 
           {/* Tab content */}
           <div className="flex-1 min-h-0">
-            {tab === "song" && <SongTab point={selected} />}
+            {tab === "song" && <SongTab point={selected} projection={projection} />}
             {tab === "clusters" && <ClustersTab clusters={clusters} />}
             {tab === "stats" && <StatsTab points={points} clusters={clusters} />}
           </div>

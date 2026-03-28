@@ -1,4 +1,4 @@
-import type { SearchResponse, SearchMode, VizData } from "./types";
+import type { SearchResponse, SearchMode, VizData, ProjectionResult } from "./types";
 
 const BASE = "/api";
 
@@ -31,5 +31,15 @@ export async function getFilters(): Promise<{ decades: number[]; genres: string[
 export async function getVizData(): Promise<VizData["points"]> {
   const res = await fetch(`${BASE}/viz/data`);
   if (!res.ok) throw new Error("Viz data failed");
+  return res.json();
+}
+
+export async function projectQuery(query: string): Promise<ProjectionResult> {
+  const res = await fetch(`${BASE}/viz/project`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error(`Projection failed: ${res.status}`);
   return res.json();
 }
