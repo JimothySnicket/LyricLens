@@ -251,19 +251,18 @@ function SongDetail({
     );
   }
 
-  // Song detail — compact, no scroll
-  const topEmotions = Object.entries(point.emotions)
-    .filter(([, v]) => v > 0.03)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3);
+  // Song detail
+  const emotionEntries = Object.entries(point.emotions)
+    .filter(([, v]) => v > 0.01)
+    .sort(([, a], [, b]) => b - a);
 
   return (
-    <div className="p-3 space-y-2.5">
+    <div className="p-4 space-y-3">
       {/* Header with dismiss */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-(--color-text) leading-snug">{point.title}</h3>
-          <p className="text-[11px] text-(--color-text-secondary)">{point.artist} · {point.year} · {point.genre}{point.chartPosition > 0 ? ` · #${point.chartPosition}` : ""}</p>
+          <p className="text-xs text-(--color-text-secondary) mt-0.5">{point.artist}</p>
         </div>
         <button
           type="button"
@@ -274,39 +273,83 @@ function SongDetail({
         </button>
       </div>
 
-      {/* Top emotions — inline */}
-      <div className="flex items-center gap-3">
-        {topEmotions.map(([emotion, value]) => (
-          <div key={emotion} className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: EMOTION_COLORS[emotion] ?? "#9ca3af" }} />
-            <span className="text-[10px] text-(--color-text-secondary) capitalize">{emotion}</span>
-            <span className="text-[10px] text-(--color-text-tertiary) tabular-nums">{(value * 100).toFixed(0)}%</span>
-          </div>
-        ))}
+      {/* Metadata chips */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs px-1.5 py-0.5 rounded-(--radius-sm) bg-(--color-bg-secondary) text-(--color-text-secondary)">
+          {point.year}
+        </span>
+        <span className="text-xs px-1.5 py-0.5 rounded-(--radius-sm) bg-(--color-bg-secondary) text-(--color-text-secondary)">
+          {point.genre}
+        </span>
+        {point.chartPosition > 0 && (
+          <span className="text-xs px-1.5 py-0.5 rounded-(--radius-sm) bg-(--color-bg-secondary) text-(--color-text-secondary)">
+            #{point.chartPosition}
+          </span>
+        )}
       </div>
 
-      {/* Summary — clamped to 3 lines */}
+      {/* Emotion bars */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
+          Emotions
+        </p>
+        <div className="space-y-1">
+          {emotionEntries.map(([emotion, value]) => (
+            <div key={emotion} className="flex items-center gap-2">
+              <span className="text-[10px] text-(--color-text-secondary) w-14 capitalize shrink-0 text-right">
+                {emotion}
+              </span>
+              <div className="flex-1 h-1.5 rounded-full bg-(--color-bg-secondary) overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.round(value * 100)}%`,
+                    backgroundColor: EMOTION_COLORS[emotion] ?? "#9ca3af",
+                  }}
+                />
+              </div>
+              <span className="text-[10px] text-(--color-text-tertiary) w-7 text-right tabular-nums">
+                {(value * 100).toFixed(0)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary */}
       {point.summary && (
-        <p className="text-[11px] text-(--color-text-secondary) leading-relaxed line-clamp-3">{point.summary}</p>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
+            Summary
+          </p>
+          <p className="text-[11px] text-(--color-text-secondary) leading-relaxed line-clamp-3">{point.summary}</p>
+        </div>
       )}
 
-      {/* Nearest neighbors — 3 max */}
+      {/* Nearest neighbors */}
       {point.neighbors.length > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
-            Nearest
+            Nearest Neighbors
           </p>
           <div className="space-y-0.5">
-            {point.neighbors.slice(0, 3).map((n, i) => (
+            {point.neighbors.slice(0, 5).map((n, i) => (
               <button
                 type="button"
                 key={n.id}
                 onClick={() => onSelectId(n.id)}
-                className="w-full flex items-center gap-2 px-2 py-1 rounded-(--radius-sm) hover:bg-(--color-bg-tertiary) transition-colors cursor-pointer text-left"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) bg-(--color-bg-tertiary) hover:bg-(--color-border) transition-colors cursor-pointer text-left"
               >
-                <span className="text-[10px] text-(--color-text-tertiary) tabular-nums w-3 shrink-0">{i + 1}</span>
-                <p className="text-[11px] text-(--color-text) flex-1 truncate">{n.title} <span className="text-(--color-text-tertiary)">— {n.artist}</span></p>
-                <span className="text-[10px] text-(--color-text-tertiary) tabular-nums shrink-0">{(n.sim * 100).toFixed(0)}%</span>
+                <span className="text-[10px] text-(--color-text-tertiary) tabular-nums w-4 shrink-0">
+                  {i + 1}.
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-(--color-text) truncate">{n.title}</p>
+                  <p className="text-[10px] text-(--color-text-tertiary) truncate">{n.artist}</p>
+                </div>
+                <span className="text-[10px] text-(--color-text-tertiary) tabular-nums shrink-0">
+                  {(n.sim * 100).toFixed(0)}%
+                </span>
               </button>
             ))}
           </div>
