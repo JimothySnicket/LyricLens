@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
@@ -15,6 +15,7 @@ interface Props {
   selectedId?: string;
   projectedPoint?: { x: number; y: number; z: number; label: string } | null;
   dimmedIds?: Set<string> | null;
+  focusPoint?: { x: number; y: number; z: number } | null;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -27,7 +28,41 @@ const EMOTION_COLORS: Record<string, string> = {
   neutral: "#9ca3af",
 };
 
-export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds }: Props) {
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
+  const plotRef = useRef<any>(null);
+
+  // Pan camera to face the focused point while keeping a fixed viewing distance
+  useEffect(() => {
+    if (!focusPoint || !plotRef.current) return;
+
+    const el = plotRef.current;
+    const scene = el._fullLayout?.scene?._scene;
+    if (!scene) return;
+
+    const cam = scene.getCamera();
+    const curEye = cam.eye;
+    const curCenter = cam.center || { x: 0, y: 0, z: 0 };
+
+    // Keep the current viewing distance (how far the camera is from what it looks at)
+    const dx = curEye.x - curCenter.x;
+    const dy = curEye.y - curCenter.y;
+    const dz = curEye.z - curCenter.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 4;
+
+    // Direction from focus point back to where the camera currently is (preserves viewing angle)
+    const dirX = dx / dist;
+    const dirY = dy / dist;
+    const dirZ = dz / dist;
+
+    Plotly.relayout(el, {
+      "scene.camera.center": { x: focusPoint.x, y: focusPoint.y, z: focusPoint.z },
+      "scene.camera.eye": {
+        x: focusPoint.x + dirX * dist,
+        y: focusPoint.y + dirY * dist,
+        z: focusPoint.z + dirZ * dist,
+      },
+    });
+  }, [focusPoint]);
 
   const { traces } = useMemo(() => {
     const hasDimming = dimmedIds != null && dimmedIds.size > 0;
@@ -187,6 +222,8 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       style={{ width: "100%", height: "100%" }}
       useResizeHandler
       onClick={handleClick}
+      onInitialized={(_: any, graphDiv: any) => { plotRef.current = graphDiv; }}
+      onUpdate={(_: any, graphDiv: any) => { plotRef.current = graphDiv; }}
     />
   );
 }

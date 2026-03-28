@@ -37,9 +37,11 @@ vizRoutes.post("/project", async (c) => {
     with_payload: true,
   });
 
-  // 3. Look up their UMAP coords from viz cache
+  // 3. Look up their UMAP coords from viz cache (match by title+artist since Qdrant has no slug)
   const vizData = getVizCache();
-  const vizLookup = new Map(vizData.map((p: any) => [p.id, p]));
+  const vizByTitleArtist = new Map(
+    vizData.map((p: any) => [`${p.title}|||${p.artist}`, p])
+  );
 
   let totalWeight = 0;
   let px = 0, py = 0, pz = 0;
@@ -47,8 +49,9 @@ vizRoutes.post("/project", async (c) => {
 
   for (const hit of results.points) {
     const sim = hit.score ?? 0;
-    const songId = hit.payload?.id as string;
-    const vizPoint = vizLookup.get(songId);
+    const title = (hit.payload?.title as string) ?? "";
+    const artist = (hit.payload?.artist as string) ?? "";
+    const vizPoint = vizByTitleArtist.get(`${title}|||${artist}`);
     if (!vizPoint) continue;
 
     const weight = sim * sim; // square weighting — closer songs dominate
@@ -58,9 +61,9 @@ vizRoutes.post("/project", async (c) => {
     totalWeight += weight;
 
     nearestSongs.push({
-      id: songId,
-      title: (hit.payload?.title as string) ?? "",
-      artist: (hit.payload?.artist as string) ?? "",
+      id: vizPoint.id,
+      title,
+      artist,
       sim: Math.round(sim * 10000) / 10000,
     });
   }
