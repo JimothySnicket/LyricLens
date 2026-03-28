@@ -97,7 +97,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       z: startEye.z + delta.z,
     };
 
-    const duration = 800;
+    const duration = 1400;
     const frameInterval = 33; // ~30fps — Plotly.relayout is expensive per call
     const startTime = performance.now();
     let lastFrame = 0;
