@@ -78,10 +78,24 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       z: (focusPoint.z - dataExtents.cz) / dataExtents.rz,
     };
 
-    // Get current center from the live camera
+    // Get current camera state
     const scene = el._fullLayout?.scene?._scene;
     const cam = scene?.getCamera?.();
     const startCenter: Vec3 = cam?.center ?? { x: 0, y: 0, z: 0 };
+    const startEye: Vec3 = cam?.eye ?? { x: 1.5, y: 1.5, z: 1.2 };
+
+    // Translate both eye and center by the same delta so the viewing
+    // angle and zoom stay identical — only the orbit pivot shifts
+    const delta: Vec3 = {
+      x: targetCenter.x - startCenter.x,
+      y: targetCenter.y - startCenter.y,
+      z: targetCenter.z - startCenter.z,
+    };
+    const targetEye: Vec3 = {
+      x: startEye.x + delta.x,
+      y: startEye.y + delta.y,
+      z: startEye.z + delta.z,
+    };
 
     const duration = 500;
     const startTime = performance.now();
@@ -89,9 +103,14 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     function step() {
       const elapsed = performance.now() - startTime;
       const t = Math.min(elapsed / duration, 1);
-      const center = lerp3(startCenter, targetCenter, easeOutCubic(t));
+      const eased = easeOutCubic(t);
+      const center = lerp3(startCenter, targetCenter, eased);
+      const eye = lerp3(startEye, targetEye, eased);
 
-      Plotly.relayout(el, { "scene.camera.center": center });
+      Plotly.relayout(el, {
+        "scene.camera.center": center,
+        "scene.camera.eye": eye,
+      });
 
       if (t < 1) {
         animRef.current = requestAnimationFrame(step);
