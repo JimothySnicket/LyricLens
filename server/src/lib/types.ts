@@ -63,6 +63,7 @@ export interface VizData {
     title: string;
     artist: string;
     genre: string;
+    metaGenre: string;
     year: number;
     decade: number;
     chartPosition: number;
