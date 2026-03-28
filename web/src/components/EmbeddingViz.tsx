@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
@@ -15,6 +15,7 @@ interface Props {
   selectedId?: string;
   projectedPoint?: { x: number; y: number; z: number; label: string } | null;
   dimmedIds?: Set<string> | null;
+  focusPoint?: { x: number; y: number; z: number } | null;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -27,7 +28,79 @@ const EMOTION_COLORS: Record<string, string> = {
   neutral: "#9ca3af",
 };
 
-export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds }: Props) {
+type Vec3 = { x: number; y: number; z: number };
+
+function lerp3(a: Vec3, b: Vec3, t: number): Vec3 {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+    z: a.z + (b.z - a.z) * t,
+  };
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
+  const plotRef = useRef<any>(null);
+  const animRef = useRef<number>(0);
+
+  // Precompute data extents for normalizing data coords → Plotly scene coords
+  const dataExtents = useMemo(() => {
+    if (points.length === 0) return null;
+    let xMin = Infinity, xMax = -Infinity;
+    let yMin = Infinity, yMax = -Infinity;
+    let zMin = Infinity, zMax = -Infinity;
+    for (const p of points) {
+      if (p.x < xMin) xMin = p.x; if (p.x > xMax) xMax = p.x;
+      if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y;
+      if (p.z < zMin) zMin = p.z; if (p.z > zMax) zMax = p.z;
+    }
+    return {
+      cx: (xMin + xMax) / 2, cy: (yMin + yMax) / 2, cz: (zMin + zMax) / 2,
+      rx: xMax - xMin || 1, ry: yMax - yMin || 1, rz: zMax - zMin || 1,
+    };
+  }, [points]);
+
+  // Smooth pan: shift camera.center toward the selected point in normalized scene space
+  // Keeps eye (user's zoom/angle) untouched — only moves the orbit pivot
+  useEffect(() => {
+    if (!focusPoint || !plotRef.current || !dataExtents) return;
+
+    cancelAnimationFrame(animRef.current);
+    const el = plotRef.current;
+
+    // Convert data coords → normalized scene coords (Plotly's internal [-0.5, 0.5] domain)
+    const targetCenter: Vec3 = {
+      x: (focusPoint.x - dataExtents.cx) / dataExtents.rx,
+      y: (focusPoint.y - dataExtents.cy) / dataExtents.ry,
+      z: (focusPoint.z - dataExtents.cz) / dataExtents.rz,
+    };
+
+    // Get current center from the live camera
+    const scene = el._fullLayout?.scene?._scene;
+    const cam = scene?.getCamera?.();
+    const startCenter: Vec3 = cam?.center ?? { x: 0, y: 0, z: 0 };
+
+    const duration = 500;
+    const startTime = performance.now();
+
+    function step() {
+      const elapsed = performance.now() - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const center = lerp3(startCenter, targetCenter, easeOutCubic(t));
+
+      Plotly.relayout(el, { "scene.camera.center": center });
+
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(step);
+      }
+    }
+
+    animRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [focusPoint, dataExtents]);
 
   const { traces } = useMemo(() => {
     const hasDimming = dimmedIds != null && dimmedIds.size > 0;
@@ -187,6 +260,8 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       style={{ width: "100%", height: "100%" }}
       useResizeHandler
       onClick={handleClick}
+      onInitialized={(_: any, div: any) => { plotRef.current = div; }}
+      onUpdate={(_: any, div: any) => { plotRef.current = div; }}
     />
   );
 }
