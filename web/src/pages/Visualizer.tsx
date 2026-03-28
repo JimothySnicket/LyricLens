@@ -35,7 +35,7 @@ interface ClusterInfo {
   name: string;
   count: number;
   topGenres: { genre: string; count: number }[];
-  emotionBreakdown: { emotion: string; fraction: number }[];
+  emotionBreakdown: { emotion: string; fraction: number; color: string }[];
 }
 
 function useClusterInfo(points: VizPoint[]): ClusterInfo[] {
@@ -67,15 +67,37 @@ function useClusterInfo(points: VizPoint[]): ClusterInfo[] {
           const e = p.dominantEmotion || "neutral";
           emoCounts.set(e, (emoCounts.get(e) || 0) + 1);
         }
-        const topEmotion = Array.from(emoCounts.entries()).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "neutral";
         const emotionBreakdown = EMOTION_KEYS
-          .map((e) => ({ emotion: e, fraction: (emoCounts.get(e) || 0) / pts.length }))
+          .map((e) => ({ emotion: e, fraction: (emoCounts.get(e) || 0) / pts.length, color: EMOTION_COLORS[e] ?? "#888" }))
           .filter((e) => e.fraction > 0.05)
           .sort((a, b) => b.fraction - a.fraction);
 
-        const genreLabel = topGenres[0]?.genre ?? "Mixed";
-        const emoLabel = topEmotion.charAt(0).toUpperCase() + topEmotion.slice(1);
-        const name = `${genreLabel} · ${emoLabel}`;
+        // Median decade for this cluster
+        const sortedDecades = pts.map((p) => p.decade).sort((a, b) => a - b);
+        const medianDecade = sortedDecades[Math.floor(sortedDecades.length / 2)];
+
+        // Most distinctive emotion: highest ratio vs dataset average
+        // (avoids always showing "fear" which dominates 40% globally)
+        const totalPoints = points.length || 1;
+        const globalEmoCounts = new Map<string, number>();
+        for (const p of points) {
+          const e = p.dominantEmotion || "neutral";
+          globalEmoCounts.set(e, (globalEmoCounts.get(e) || 0) + 1);
+        }
+        let bestEmo = emotionBreakdown[0]?.emotion ?? "neutral";
+        let bestRatio = 0;
+        for (const { emotion, fraction } of emotionBreakdown) {
+          const globalFraction = (globalEmoCounts.get(emotion) || 0) / totalPoints;
+          const ratio = globalFraction > 0 ? fraction / globalFraction : 0;
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestEmo = emotion;
+          }
+        }
+
+        const decadeLabel = `${medianDecade}s`;
+        const emoLabel = bestEmo.charAt(0).toUpperCase() + bestEmo.slice(1);
+        const name = `${decadeLabel} · ${emoLabel}`;
 
         return { id, name, count: pts.length, topGenres, emotionBreakdown };
       });
@@ -272,17 +294,15 @@ function ClustersTab({ clusters }: { clusters: ClusterInfo[] }) {
             ))}
           </div>
 
-          {/* Emotion composition bar */}
-          <div className="h-2 rounded-full overflow-hidden flex">
+          {/* Emotion breakdown with labels */}
+          <div className="flex items-center gap-2 flex-wrap">
             {c.emotionBreakdown.map((e) => (
-              <div
-                key={e.emotion}
-                title={`${e.emotion}: ${(e.fraction * 100).toFixed(0)}%`}
-                style={{
-                  width: `${(e.fraction * 100).toFixed(1)}%`,
-                  backgroundColor: EMOTION_COLORS[e.emotion] ?? "#9ca3af",
-                }}
-              />
+              <div key={e.emotion} className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: e.color }} />
+                <span className="text-[10px] text-(--color-text-tertiary) capitalize">
+                  {e.emotion} {(e.fraction * 100).toFixed(0)}%
+                </span>
+              </div>
             ))}
           </div>
         </div>
