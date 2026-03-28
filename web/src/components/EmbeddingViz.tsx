@@ -7,7 +7,7 @@ import type { VizData } from "../lib/types";
 const createPlotlyComponent = typeof factory === "function" ? factory : (factory as any).default;
 const Plot = createPlotlyComponent(Plotly);
 
-type ColorBy = "genre" | "decade" | "topic" | "cluster";
+type ColorBy = "genre" | "decade" | "emotion" | "cluster";
 
 type VizPoint = VizData["points"][number];
 
@@ -38,17 +38,14 @@ const DECADE_COLORS: Record<number, string> = {
   2010: "#795548",
 };
 
-const TOPIC_COLORS: Record<string, string> = {
-  sadness: "#5c6bc0",
-  romantic: "#ec407a",
-  intensity: "#ef5350",
-  dating: "#ab47bc",
-  mature: "#8d6e63",
-  feelings: "#42a5f5",
-  "night/time": "#7e57c2",
-  "world/life": "#26a69a",
-  communication: "#66bb6a",
-  music: "#ffa726",
+const EMOTION_COLORS: Record<string, string> = {
+  joy: "#fbbf24",
+  sadness: "#60a5fa",
+  anger: "#ef4444",
+  fear: "#a78bfa",
+  surprise: "#34d399",
+  disgust: "#f97316",
+  neutral: "#9ca3af",
 };
 
 function getPointColor(point: VizPoint, colorBy: ColorBy): string {
@@ -58,16 +55,15 @@ function getPointColor(point: VizPoint, colorBy: ColorBy): string {
   if (colorBy === "decade") {
     return DECADE_COLORS[point.decade] ?? "#888888";
   }
-  if (colorBy === "topic") {
-    return TOPIC_COLORS[point.topic?.toLowerCase()] ?? "#888888";
+  if (colorBy === "emotion") {
+    return EMOTION_COLORS[point.dominantEmotion?.toLowerCase()] ?? "#888888";
   }
-  // cluster: use a hash of the cluster value for stable colors
+  // cluster: stable color from palette by cluster index
   const palette = [
-    "#e53935", "#8e24aa", "#1e88e5", "#00897b",
-    "#43a047", "#fb8c00", "#6d4c41", "#546e7a",
+    "#e53935", "#8e24aa", "#1e88e5", "#00897b", "#43a047",
+    "#fb8c00", "#6d4c41", "#546e7a", "#d81b60", "#5e35b1",
   ];
-  const hash = String(point.topic ?? "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return palette[hash % palette.length];
+  return palette[point.cluster % palette.length];
 }
 
 export function EmbeddingViz({ points, colorBy, onSelect, selectedId }: Props) {
@@ -79,7 +75,8 @@ export function EmbeddingViz({ points, colorBy, onSelect, selectedId }: Props) {
       let key: string;
       if (colorBy === "genre") key = p.genre?.toLowerCase() || "unknown";
       else if (colorBy === "decade") key = String(p.decade || "unknown");
-      else key = p.topic?.toLowerCase() || "unknown";
+      else if (colorBy === "emotion") key = p.dominantEmotion?.toLowerCase() || "unknown";
+      else key = String(p.cluster);
 
       const existing = groups.get(key);
       if (existing) existing.push(p);
