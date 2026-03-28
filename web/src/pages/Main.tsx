@@ -449,7 +449,7 @@ export function Main() {
   });
 
   const skipToSearch = useCallback(() => scrollToSection(5), [scrollToSection]);
-  const navVisible = activeIndex >= 5;
+  const navVisible = activeIndex === 0 || activeIndex >= 5;
 
   return (
     <>

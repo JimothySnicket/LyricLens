@@ -1,5 +1,14 @@
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
+import { Nav } from "./Nav";
 
 export function Layout() {
-  return <Outlet />;
+  const { pathname } = useLocation();
+  const isMain = pathname === "/";
+
+  return (
+    <>
+      {!isMain && <Nav />}
+      <Outlet />
+    </>
+  );
 }

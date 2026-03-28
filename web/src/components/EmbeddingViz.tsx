@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import Plotly from "plotly.js-basic-dist-min";
+import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
 

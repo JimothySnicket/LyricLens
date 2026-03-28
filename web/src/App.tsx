@@ -3,6 +3,7 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 import { Layout } from "./components/Layout";
 import { Main } from "./pages/Main";
 import { DeepDive } from "./pages/DeepDive";
+import { Visualizer } from "./pages/Visualizer";
 
 export function App() {
   return (
@@ -12,6 +13,7 @@ export function App() {
           <Route element={<Layout />}>
             <Route index element={<Main />} />
             <Route path="deep-dive" element={<DeepDive />} />
+            <Route path="visualizer" element={<Visualizer />} />
           </Route>
         </Routes>
       </BrowserRouter>

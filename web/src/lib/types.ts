@@ -57,6 +57,7 @@ export interface VizData {
     artist: string;
     genre: string;
     decade: number;
+    topic: string;
     cluster: number;
   }[];
 }

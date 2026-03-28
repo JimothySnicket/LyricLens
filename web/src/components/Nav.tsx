@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useNavigate, useLocation } from "react-router";
 import { useTheme } from "../theme/ThemeProvider";
 
 const SECTION_LINKS = [
@@ -10,14 +11,26 @@ const SECTION_LINKS = [
 ];
 
 interface NavProps {
-  visible: boolean;
-  onNavigate: (sectionIndex: number) => void;
+  visible?: boolean;
+  onNavigate?: (sectionIndex: number) => void;
 }
 
-export function Nav({ visible, onNavigate }: NavProps) {
+export function Nav({ visible = true, onNavigate }: NavProps) {
   const { theme, toggle } = useTheme();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   if (!visible) return null;
+
+  const isHome = pathname === "/";
+
+  function handleNav(index: number) {
+    if (onNavigate) {
+      onNavigate(index);
+    } else {
+      navigate("/");
+    }
+  }
 
   return (
     <motion.header
@@ -30,7 +43,7 @@ export function Nav({ visible, onNavigate }: NavProps) {
         {/* Logo */}
         <button
           type="button"
-          onClick={() => onNavigate(0)}
+          onClick={() => handleNav(0)}
           className="text-base font-semibold text-(--color-text) bg-transparent border-none cursor-pointer"
           style={{ fontFamily: "inherit" }}
         >
@@ -39,11 +52,11 @@ export function Nav({ visible, onNavigate }: NavProps) {
 
         {/* Section links */}
         <div className="flex items-center gap-6">
-          {SECTION_LINKS.map((link) => (
+          {isHome && SECTION_LINKS.map((link) => (
             <button
               key={link.label}
               type="button"
-              onClick={() => onNavigate(link.index)}
+              onClick={() => handleNav(link.index)}
               className="text-xs text-(--color-text-tertiary) hover:text-(--color-text-secondary) transition-colors bg-transparent border-none cursor-pointer"
               style={{ fontFamily: "inherit" }}
             >
@@ -55,6 +68,12 @@ export function Nav({ visible, onNavigate }: NavProps) {
             className="text-xs text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
           >
             Deep Dive →
+          </a>
+          <a
+            href="/visualizer"
+            className="text-xs text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
+          >
+            Vector Map
           </a>
 
           {/* Theme toggle */}
