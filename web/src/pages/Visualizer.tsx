@@ -568,16 +568,16 @@ export function Visualizer() {
               dimmedIds={dimmedIds}
             />
           )}
-        </div>
 
-        {/* Floating panel */}
-        <div className="absolute top-3 right-3 w-[300px] max-md:hidden rounded-(--radius-md) border border-(--color-border) bg-(--color-surface)/95 backdrop-blur-sm shadow-lg overflow-y-auto max-h-[calc(100%-24px)]">
-          <SongDetail
-            point={selected}
-            projection={projection}
-            onSelectId={handleSelectById}
-            onDismiss={handleDismiss}
-          />
+          {/* Floating panel */}
+          <div className="absolute top-3 right-3 w-[300px] max-md:hidden rounded-(--radius-md) border border-(--color-border) bg-(--color-surface)/95 backdrop-blur-sm shadow-lg overflow-y-auto max-h-[calc(100%-24px)] z-10">
+            <SongDetail
+              point={selected}
+              projection={projection}
+              onSelectId={handleSelectById}
+              onDismiss={handleDismiss}
+            />
+          </div>
         </div>
       </div>
     </div>
