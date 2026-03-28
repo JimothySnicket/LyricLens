@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
@@ -45,6 +45,14 @@ function easeOutCubic(t: number): number {
 export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
   const plotRef = useRef<any>(null);
   const animRef = useRef<number>(0);
+  const [hoveredXYZ, setHoveredXYZ] = useState<{ x: number; y: number; z: number } | null>(null);
+  const hoverThrottleRef = useRef<number>(0);
+
+  // Find selected point for callout label + connection line
+  const selectedPoint = useMemo(
+    () => (selectedId ? points.find((p) => p.id === selectedId) : null),
+    [points, selectedId],
+  );
 
   // Precompute data extents for normalizing data coords → Plotly scene coords
   const dataExtents = useMemo(() => {
@@ -219,8 +227,45 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       } as Plotly.Data);
     }
 
+    // Selected point callout label
+    if (selectedPoint) {
+      const label = selectedPoint.title.length > 25
+        ? selectedPoint.title.slice(0, 24) + "…"
+        : selectedPoint.title;
+      traces.push({
+        type: "scatter3d" as const,
+        mode: "text" as const,
+        name: "selected-label",
+        x: [selectedPoint.x],
+        y: [selectedPoint.y],
+        z: [selectedPoint.z],
+        text: [label],
+        textposition: "top center",
+        textfont: { size: 10, color: "#ffffff", family: "Inter, sans-serif" },
+        hoverinfo: "skip" as any,
+      } as Plotly.Data);
+    }
+
+    // Dotted line from selected to hovered point
+    if (selectedPoint && hoveredXYZ) {
+      traces.push({
+        type: "scatter3d" as const,
+        mode: "lines" as const,
+        name: "connection",
+        x: [selectedPoint.x, hoveredXYZ.x],
+        y: [selectedPoint.y, hoveredXYZ.y],
+        z: [selectedPoint.z, hoveredXYZ.z],
+        hoverinfo: "skip" as any,
+        line: {
+          color: "rgba(255,255,255,0.3)",
+          width: 2,
+          dash: "dot",
+        },
+      } as Plotly.Data);
+    }
+
     return { traces };
-  }, [points, dimmedIds, selectedId, projectedPoint]);
+  }, [points, dimmedIds, selectedId, projectedPoint, selectedPoint, hoveredXYZ]);
 
   const layout = useMemo(
     (): Partial<Plotly.Layout> => ({
@@ -280,6 +325,23 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     if (found) onSelect(found);
   }
 
+  const handleHover = useCallback((event: Readonly<Plotly.PlotHoverEvent>) => {
+    if (!selectedPoint) return;
+    const now = performance.now();
+    if (now - hoverThrottleRef.current < 50) return; // throttle to ~20fps
+    hoverThrottleRef.current = now;
+
+    const pt = event.points[0];
+    if (!pt) return;
+    const id = pt.customdata as string;
+    if (id === selectedId) return; // don't draw line to self
+    setHoveredXYZ({ x: pt.x as number, y: pt.y as number, z: pt.z as number });
+  }, [selectedPoint, selectedId]);
+
+  const handleUnhover = useCallback(() => {
+    setHoveredXYZ(null);
+  }, []);
+
   return (
     <Plot
       data={traces}
@@ -288,6 +350,8 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       style={{ width: "100%", height: "100%" }}
       useResizeHandler
       onClick={handleClick}
+      onHover={handleHover}
+      onUnhover={handleUnhover}
       onInitialized={(_: any, div: any) => { plotRef.current = div; }}
       onUpdate={(_: any, div: any) => { plotRef.current = div; }}
     />
