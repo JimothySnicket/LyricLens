@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo } from "react";
 import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
@@ -15,7 +15,6 @@ interface Props {
   selectedId?: string;
   projectedPoint?: { x: number; y: number; z: number; label: string } | null;
   dimmedIds?: Set<string> | null;
-  focusPoint?: { x: number; y: number; z: number } | null;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -28,51 +27,7 @@ const EMOTION_COLORS: Record<string, string> = {
   neutral: "#9ca3af",
 };
 
-export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
-  const plotRef = useRef<any>(null);
-  const centroidRef = useRef<{ x: number; y: number; z: number } | null>(null);
-
-  // Compute data centroid once
-  useEffect(() => {
-    if (points.length === 0) return;
-    let sx = 0, sy = 0, sz = 0;
-    for (const p of points) { sx += p.x; sy += p.y; sz += p.z; }
-    const n = points.length;
-    centroidRef.current = { x: sx / n, y: sy / n, z: sz / n };
-  }, [points]);
-
-  // Rotate camera around the data centroid to face the selected point
-  useEffect(() => {
-    if (!focusPoint || !plotRef.current || !centroidRef.current) return;
-
-    const el = plotRef.current;
-    const c = centroidRef.current;
-
-    // Direction from centroid toward the selected point
-    const dx = focusPoint.x - c.x;
-    const dy = focusPoint.y - c.y;
-    const dz = focusPoint.z - c.z;
-    const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-
-    // Get current camera distance from centroid
-    const scene = el._fullLayout?.scene?._scene;
-    const cam = scene?.getCamera?.();
-    const curEye = cam?.eye ?? { x: 1.5, y: 1.5, z: 1.2 };
-    const ex = curEye.x - c.x;
-    const ey = curEye.y - c.y;
-    const ez = curEye.z - c.z;
-    const viewDist = Math.sqrt(ex * ex + ey * ey + ez * ez) || 12;
-
-    // Place camera on the opposite side of centroid from the point
-    Plotly.relayout(el, {
-      "scene.camera.center": { x: c.x, y: c.y, z: c.z },
-      "scene.camera.eye": {
-        x: c.x - (dx / len) * viewDist,
-        y: c.y - (dy / len) * viewDist,
-        z: c.z - (dz / len) * viewDist,
-      },
-    });
-  }, [focusPoint]);
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds }: Props) {
 
   const { traces } = useMemo(() => {
     const hasDimming = dimmedIds != null && dimmedIds.size > 0;
@@ -232,8 +187,6 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       style={{ width: "100%", height: "100%" }}
       useResizeHandler
       onClick={handleClick}
-      onInitialized={(_: any, graphDiv: any) => { plotRef.current = graphDiv; }}
-      onUpdate={(_: any, graphDiv: any) => { plotRef.current = graphDiv; }}
     />
   );
 }
