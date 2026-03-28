@@ -445,7 +445,7 @@ export function Visualizer() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] pt-14">
+    <div className="flex flex-col h-screen pt-[56px]">
       {/* Row 1: Lens selector + query */}
       <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
