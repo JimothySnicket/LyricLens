@@ -502,6 +502,18 @@ export function Visualizer() {
           ))}
         </div>
 
+        {/* Inline legend (emotion only, large screens) */}
+        {colorBy === "emotion" && (
+          <div className="hidden xl:flex items-center gap-2">
+            {EMOTION_KEYS.map((e) => (
+              <div key={e} className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: EMOTION_COLORS[e] }} />
+                <span className="text-[10px] text-(--color-text-tertiary) capitalize">{e}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Query projection */}
         <div className="flex items-center gap-2">
           <input
@@ -553,7 +565,7 @@ export function Visualizer() {
         </div>
 
         {/* Right panel */}
-        <div className="w-[380px] flex-shrink-0 flex flex-col border-l border-(--color-border) bg-(--color-surface)">
+        <div className="w-[380px] max-lg:w-[300px] max-md:hidden flex-shrink-0 flex flex-col border-l border-(--color-border) bg-(--color-surface)">
           {/* Tabs */}
           <div className="flex border-b border-(--color-border) px-4">
             {TAB_OPTIONS.map((t) => (
