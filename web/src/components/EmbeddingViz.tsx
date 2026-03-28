@@ -7,37 +7,15 @@ import type { VizData } from "../lib/types";
 const createPlotlyComponent = typeof factory === "function" ? factory : (factory as any).default;
 const Plot = createPlotlyComponent(Plotly);
 
-type ColorBy = "genre" | "decade" | "emotion" | "cluster";
-
 type VizPoint = VizData["points"][number];
 
 interface Props {
   points: VizPoint[];
-  colorBy: ColorBy;
   onSelect: (point: VizPoint) => void;
   selectedId?: string;
   projectedPoint?: { x: number; y: number; z: number; label: string } | null;
+  dimmedIds?: Set<string> | null;
 }
-
-// Genre colors matching CSS vars
-const GENRE_COLORS: Record<string, string> = {
-  rock: "#4caf50",
-  pop: "#2196f3",
-  country: "#ff9800",
-  jazz: "#9c27b0",
-  blues: "#f44336",
-  reggae: "#795548",
-};
-
-const DECADE_COLORS: Record<number, string> = {
-  1950: "#e91e63",
-  1960: "#9c27b0",
-  1970: "#3f51b5",
-  1980: "#009688",
-1990: "#ff5722",
-  2000: "#607d8b",
-  2010: "#795548",
-};
 
 const EMOTION_COLORS: Record<string, string> = {
   joy: "#fbbf24",
@@ -49,43 +27,33 @@ const EMOTION_COLORS: Record<string, string> = {
   neutral: "#9ca3af",
 };
 
-function getPointColor(point: VizPoint, colorBy: ColorBy): string {
-  if (colorBy === "genre") {
-    return GENRE_COLORS[point.genre?.toLowerCase()] ?? "#888888";
-  }
-  if (colorBy === "decade") {
-    return DECADE_COLORS[point.decade] ?? "#888888";
-  }
-  if (colorBy === "emotion") {
-    return EMOTION_COLORS[point.dominantEmotion?.toLowerCase()] ?? "#888888";
-  }
-  // cluster: stable color from palette by cluster index
-  const palette = [
-    "#e53935", "#8e24aa", "#1e88e5", "#00897b", "#43a047",
-    "#fb8c00", "#6d4c41", "#546e7a", "#d81b60", "#5e35b1",
-  ];
-  return palette[point.cluster % palette.length];
-}
-
-export function EmbeddingViz({ points, colorBy, onSelect, selectedId, projectedPoint }: Props) {
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds }: Props) {
   const { traces } = useMemo(() => {
-    // Group points by their color key for efficient rendering
-    const groups = new Map<string, VizPoint[]>();
+    const hasDimming = dimmedIds != null && dimmedIds.size > 0;
+
+    // Split points into bright and dimmed sets
+    const bright: VizPoint[] = [];
+    const dimmed: VizPoint[] = [];
 
     for (const p of points) {
-      let key: string;
-      if (colorBy === "genre") key = p.genre?.toLowerCase() || "unknown";
-      else if (colorBy === "decade") key = String(p.decade || "unknown");
-      else if (colorBy === "emotion") key = p.dominantEmotion?.toLowerCase() || "unknown";
-      else key = String(p.cluster);
-
-      const existing = groups.get(key);
-      if (existing) existing.push(p);
-      else groups.set(key, [p]);
+      if (hasDimming && dimmedIds.has(p.id)) {
+        dimmed.push(p);
+      } else {
+        bright.push(p);
+      }
     }
 
-    const traces: Plotly.Data[] = Array.from(groups.entries()).map(([key, pts]) => {
-      const color = getPointColor(pts[0], colorBy);
+    // Group bright points by dominant emotion
+    const emotionGroups = new Map<string, VizPoint[]>();
+    for (const p of bright) {
+      const key = p.dominantEmotion?.toLowerCase() || "unknown";
+      const existing = emotionGroups.get(key);
+      if (existing) existing.push(p);
+      else emotionGroups.set(key, [p]);
+    }
+
+    const traces: Plotly.Data[] = Array.from(emotionGroups.entries()).map(([key, pts]) => {
+      const color = EMOTION_COLORS[key] ?? "#888888";
       return {
         type: "scatter3d" as const,
         mode: "markers" as const,
@@ -107,6 +75,26 @@ export function EmbeddingViz({ points, colorBy, onSelect, selectedId, projectedP
         },
       } as Plotly.Data;
     });
+
+    // Dimmed trace: grey, low opacity, no hover
+    if (dimmed.length > 0) {
+      traces.push({
+        type: "scatter3d" as const,
+        mode: "markers" as const,
+        name: "dimmed",
+        x: dimmed.map((p) => p.x),
+        y: dimmed.map((p) => p.y),
+        z: dimmed.map((p) => p.z),
+        text: dimmed.map(() => ""),
+        customdata: dimmed.map((p) => p.id),
+        hoverinfo: "skip" as any,
+        marker: {
+          size: 3,
+          color: "#555555",
+          opacity: 0.08,
+        },
+      } as Plotly.Data);
+    }
 
     if (projectedPoint) {
       traces.push({
@@ -131,7 +119,7 @@ export function EmbeddingViz({ points, colorBy, onSelect, selectedId, projectedP
     }
 
     return { traces };
-  }, [points, colorBy, selectedId, projectedPoint]);
+  }, [points, dimmedIds, selectedId, projectedPoint]);
 
   const layout = useMemo(
     (): Partial<Plotly.Layout> => ({
