@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from qdrant_client import QdrantClient, models
 
 COLLECTION_NAME = "song_lyrics"
-VECTOR_SIZE = 384
+VECTOR_SIZE = 768
 BATCH_SIZE = 100
 LYRICS_MAX_CHARS = 500
 

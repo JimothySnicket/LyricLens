@@ -1,7 +1,7 @@
 """
 build_viz.py — Task 17: UMAP 3D reduction + KMeans clustering for the visualizer.
 
-Loads 819x384 embeddings and song metadata, reduces to 3D with UMAP, assigns
+Loads 2742x768 embeddings and song metadata, reduces to 3D with UMAP, assigns
 cluster labels with KMeans on the original high-dim embeddings, then writes
 data/processed/umap_coords.json for the frontend visualizer.
 """
@@ -64,7 +64,7 @@ def main() -> None:
     # 3. KMeans — cluster on original 384-dim embeddings
     # ------------------------------------------------------------------
     print("\nRunning KMeans (n_clusters=8) on original embeddings ...")
-    kmeans = KMeans(n_clusters=8, random_state=42, n_init="auto")
+    kmeans = KMeans(n_clusters=10, random_state=42, n_init="auto")
     cluster_labels: np.ndarray = kmeans.fit_predict(embeddings)  # shape (819,)
     print(f"  Unique clusters  : {sorted(set(cluster_labels.tolist()))}")
 
@@ -105,7 +105,7 @@ def main() -> None:
     print("\n--- Stats ---")
     print(f"  UMAP time        : {umap_elapsed:.1f}s")
     print(f"  Total songs      : {len(records)}")
-    print(f"  Number of clusters: 8")
+    print(f"  Number of clusters: 10")
 
     cluster_counter = Counter(int(lbl) for lbl in cluster_labels)
     print("\n  Songs per cluster:")
@@ -113,7 +113,7 @@ def main() -> None:
         print(f"    Cluster {cluster_id}: {cluster_counter[cluster_id]} songs")
 
     print("\n  Genre distribution per cluster:")
-    cluster_genres: dict[int, Counter] = {i: Counter() for i in range(8)}
+    cluster_genres: dict[int, Counter] = {i: Counter() for i in range(10)}
     for record in records:
         cluster_genres[record["cluster"]][record["genre"]] += 1
     for cluster_id in sorted(cluster_genres):
