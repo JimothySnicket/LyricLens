@@ -2,8 +2,9 @@
 build_viz.py — Task 17: UMAP 3D reduction + KMeans clustering for the visualizer.
 
 Loads 2742x768 embeddings and song metadata, reduces to 3D with UMAP, assigns
-cluster labels with KMeans on the original high-dim embeddings, then writes
-data/processed/umap_coords.json for the frontend visualizer.
+cluster labels with KMeans on the original high-dim embeddings, precomputes
+nearest neighbors via cosine similarity, then writes data/processed/umap_coords.json
+for the frontend visualizer.
 """
 
 import json
@@ -12,6 +13,7 @@ import time
 from collections import Counter
 
 import numpy as np
+from numpy.linalg import norm
 from sklearn.cluster import KMeans
 from umap import UMAP
 
@@ -69,12 +71,46 @@ def main() -> None:
     print(f"  Unique clusters  : {sorted(set(cluster_labels.tolist()))}")
 
     # ------------------------------------------------------------------
-    # 4. Build output records
+    # 4. Precompute top-5 nearest neighbors (768D cosine similarity)
     # ------------------------------------------------------------------
+    print("\nPrecomputing nearest neighbors (cosine similarity on 768D) ...")
+
+    # Embeddings are already L2-normalised by nomic, so dot product = cosine sim
+    similarity_matrix = embeddings @ embeddings.T  # (N, N)
+
+    neighbors_map: list[list[dict]] = []
+    for i in range(len(songs)):
+        sims = similarity_matrix[i]
+        # Exclude self (index i) by setting its sim to -1
+        sims[i] = -1.0
+        top_indices = np.argsort(sims)[-5:][::-1]  # top 5 descending
+        neighbors_map.append([
+            {
+                "id": songs[idx]["id"],
+                "title": songs[idx].get("title", ""),
+                "artist": songs[idx].get("artist", ""),
+                "sim": round(float(sims[idx]), 4),
+            }
+            for idx in top_indices
+        ])
+    print(f"  Computed neighbors for {len(neighbors_map)} songs")
+
+    # ------------------------------------------------------------------
+    # 5. Build output records
+    # ------------------------------------------------------------------
+    EMOTION_KEYS = ["joy", "sadness", "anger", "fear", "surprise", "disgust", "neutral"]
+
     print("\nBuilding output records ...")
     records = []
     for i, song in enumerate(songs):
         x, y, z = coords_3d[i]
+
+        emotions = song.get("emotions", {})
+        dominant = max(EMOTION_KEYS, key=lambda k: emotions.get(k, 0)) if emotions else "neutral"
+
+        summary_raw = song.get("summary") or ""
+        summary = (summary_raw[:297] + "...") if len(summary_raw) > 300 else summary_raw
+
         records.append(
             {
                 "id": song.get("id", ""),
@@ -84,14 +120,19 @@ def main() -> None:
                 "title": song.get("title", ""),
                 "artist": song.get("artist", ""),
                 "genre": song.get("genre", ""),
+                "year": song.get("year"),
                 "decade": song.get("decade"),
-                "topic": song.get("topic", ""),
+                "chartPosition": song.get("chart_position"),
                 "cluster": int(cluster_labels[i]),
+                "dominantEmotion": dominant,
+                "emotions": {k: round(emotions.get(k, 0), 4) for k in EMOTION_KEYS},
+                "summary": summary,
+                "neighbors": neighbors_map[i],
             }
         )
 
     # ------------------------------------------------------------------
-    # 5. Write output
+    # 6. Write output
     # ------------------------------------------------------------------
     print(f"\nWriting {len(records)} records to {OUTPUT_PATH} ...")
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
@@ -100,7 +141,7 @@ def main() -> None:
     print(f"  File size        : {file_size_kb:.1f} KB")
 
     # ------------------------------------------------------------------
-    # 6. Stats
+    # 7. Stats
     # ------------------------------------------------------------------
     print("\n--- Stats ---")
     print(f"  UMAP time        : {umap_elapsed:.1f}s")
