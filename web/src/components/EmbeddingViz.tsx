@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState, useCallback } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 import Plotly from "plotly.js-gl3d-dist-min";
 import factory from "react-plotly.js/factory";
 import type { VizData } from "../lib/types";
@@ -45,7 +45,6 @@ function easeOutCubic(t: number): number {
 export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
   const plotRef = useRef<any>(null);
   const animRef = useRef<number>(0);
-  const [hoveredXYZ, setHoveredXYZ] = useState<{ x: number; y: number; z: number } | null>(null);
   const hoverThrottleRef = useRef<number>(0);
 
   // Find selected point for callout label + connection line
@@ -246,26 +245,24 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       } as Plotly.Data);
     }
 
-    // Dotted line from selected to hovered point
-    if (selectedPoint && hoveredXYZ) {
-      traces.push({
-        type: "scatter3d" as const,
-        mode: "lines" as const,
-        name: "connection",
-        x: [selectedPoint.x, hoveredXYZ.x],
-        y: [selectedPoint.y, hoveredXYZ.y],
-        z: [selectedPoint.z, hoveredXYZ.z],
-        hoverinfo: "skip" as any,
-        line: {
-          color: "rgba(255,255,255,0.3)",
-          width: 2,
-          dash: "dot",
-        },
-      } as Plotly.Data);
-    }
+    // Placeholder trace for hover connection line (updated imperatively, not via React)
+    traces.push({
+      type: "scatter3d" as const,
+      mode: "lines" as const,
+      name: "connection",
+      x: [] as number[],
+      y: [] as number[],
+      z: [] as number[],
+      hoverinfo: "skip" as any,
+      line: {
+        color: "rgba(255,255,255,0.3)",
+        width: 2,
+        dash: "dot",
+      },
+    } as Plotly.Data);
 
     return { traces };
-  }, [points, dimmedIds, selectedId, projectedPoint, selectedPoint, hoveredXYZ]);
+  }, [points, dimmedIds, selectedId, projectedPoint, selectedPoint]);
 
   const layout = useMemo(
     (): Partial<Plotly.Layout> => ({
@@ -325,21 +322,32 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     if (found) onSelect(found);
   }
 
+  // Update the connection line trace imperatively (bypasses React re-render)
   const handleHover = useCallback((event: Readonly<Plotly.PlotHoverEvent>) => {
-    if (!selectedPoint) return;
+    if (!selectedPoint || !plotRef.current) return;
     const now = performance.now();
-    if (now - hoverThrottleRef.current < 50) return; // throttle to ~20fps
+    if (now - hoverThrottleRef.current < 80) return;
     hoverThrottleRef.current = now;
 
     const pt = event.points[0];
     if (!pt) return;
     const id = pt.customdata as string;
-    if (id === selectedId) return; // don't draw line to self
-    setHoveredXYZ({ x: pt.x as number, y: pt.y as number, z: pt.z as number });
+    if (id === selectedId) return;
+
+    const el = plotRef.current;
+    const lastTraceIdx = el.data.length - 1; // connection trace is always last
+    Plotly.restyle(el, {
+      x: [[selectedPoint.x, pt.x as number]],
+      y: [[selectedPoint.y, pt.y as number]],
+      z: [[selectedPoint.z, pt.z as number]],
+    }, [lastTraceIdx]);
   }, [selectedPoint, selectedId]);
 
   const handleUnhover = useCallback(() => {
-    setHoveredXYZ(null);
+    if (!plotRef.current) return;
+    const el = plotRef.current;
+    const lastTraceIdx = el.data.length - 1;
+    Plotly.restyle(el, { x: [[]], y: [[]], z: [[]] }, [lastTraceIdx]);
   }, []);
 
   return (
