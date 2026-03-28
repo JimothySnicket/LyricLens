@@ -47,6 +47,13 @@ export interface ParsedQuery {
   interpretations: { type: string; label: string }[];
 }
 
+export interface VizNeighbor {
+  id: string;
+  title: string;
+  artist: string;
+  sim: number;
+}
+
 export interface VizData {
   points: {
     id: string;
@@ -56,7 +63,13 @@ export interface VizData {
     title: string;
     artist: string;
     genre: string;
+    year: number;
     decade: number;
+    chartPosition: number;
     cluster: number;
+    dominantEmotion: string;
+    emotions: Record<string, number>;
+    summary: string;
+    neighbors: VizNeighbor[];
   }[];
 }
