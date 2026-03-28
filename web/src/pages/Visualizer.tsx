@@ -86,7 +86,7 @@ function useClusterInfo(points: VizPoint[]): ClusterInfo[] {
 /*  SongTab                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function SongTab({ point, projection }: { point: VizPoint | null; projection: ProjectionResult | null }) {
+function SongTab({ point, projection, onSelectId }: { point: VizPoint | null; projection: ProjectionResult | null; onSelectId: (id: string) => void }) {
   if (!point && projection) {
     return (
       <div className="p-4 space-y-4 overflow-y-auto h-full">
@@ -102,14 +102,19 @@ function SongTab({ point, projection }: { point: VizPoint | null; projection: Pr
           </p>
           <div className="space-y-1.5">
             {projection.nearest.map((n, i) => (
-              <div key={n.id} className="flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) bg-(--color-bg-tertiary)">
+              <button
+                type="button"
+                key={n.id}
+                onClick={() => onSelectId(n.id)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) bg-(--color-bg-tertiary) hover:bg-(--color-border) transition-colors cursor-pointer text-left"
+              >
                 <span className="text-[10px] font-mono font-semibold text-(--color-text-tertiary) w-4 text-center">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-(--color-text) truncate">{n.title}</p>
                   <p className="text-[10px] text-(--color-text-tertiary)">{n.artist}</p>
                 </div>
                 <span className="text-[10px] font-mono text-(--color-text-tertiary)">{n.sim.toFixed(2)}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -202,8 +207,13 @@ function SongTab({ point, projection }: { point: VizPoint | null; projection: Pr
           </p>
           <div className="space-y-1.5">
             {point.neighbors.slice(0, 5).map((n, i) => (
-              <div key={n.id} className="flex items-start gap-2">
-                <span className="text-[10px] text-(--color-text-tertiary) tabular-nums mt-px w-4 shrink-0">
+              <button
+                type="button"
+                key={n.id}
+                onClick={() => onSelectId(n.id)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) bg-(--color-bg-tertiary) hover:bg-(--color-border) transition-colors cursor-pointer text-left"
+              >
+                <span className="text-[10px] text-(--color-text-tertiary) tabular-nums w-4 shrink-0">
                   {i + 1}.
                 </span>
                 <div className="flex-1 min-w-0">
@@ -213,7 +223,7 @@ function SongTab({ point, projection }: { point: VizPoint | null; projection: Pr
                 <span className="text-[10px] text-(--color-text-tertiary) tabular-nums shrink-0">
                   {(n.sim * 100).toFixed(0)}%
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -452,6 +462,11 @@ export function Visualizer() {
     setTab("song");
   }
 
+  function handleSelectById(id: string) {
+    const found = points.find((p) => p.id === id);
+    if (found) handleSelect(found);
+  }
+
   async function handleProject() {
     if (!query.trim() || projecting) return;
     setProjecting(true);
@@ -472,7 +487,7 @@ export function Visualizer() {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)]">
+    <div className="flex flex-col h-[calc(100vh-56px)] pt-14">
       {/* Controls bar */}
       <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -586,7 +601,7 @@ export function Visualizer() {
 
           {/* Tab content */}
           <div className="flex-1 min-h-0">
-            {tab === "song" && <SongTab point={selected} projection={projection} />}
+            {tab === "song" && <SongTab point={selected} projection={projection} onSelectId={handleSelectById} />}
             {tab === "clusters" && <ClustersTab clusters={clusters} />}
             {tab === "stats" && <StatsTab points={points} clusters={clusters} />}
           </div>
