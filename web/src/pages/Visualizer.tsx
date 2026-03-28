@@ -229,11 +229,24 @@ function SongDetail({
     );
   }
 
-  // Nothing selected
+  // Nothing selected — default intro
   if (!point) {
     return (
-      <div className="flex items-center justify-center h-full text-xs text-(--color-text-tertiary) px-4">
-        Click a point to explore
+      <div className="p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-(--color-text)">Embedding Space</h3>
+        <p className="text-xs text-(--color-text-secondary) leading-relaxed">
+          2,742 Billboard hits mapped by semantic similarity. Songs that share lyrical themes cluster together regardless of genre or era.
+        </p>
+        <div className="space-y-1.5 text-[11px] text-(--color-text-tertiary)">
+          <p><strong className="text-(--color-text-secondary)">Filter</strong> — click a genre, decade, or cluster chip above to highlight a subset</p>
+          <p><strong className="text-(--color-text-secondary)">Explore</strong> — click any point to see its detail and nearest neighbors</p>
+          <p><strong className="text-(--color-text-secondary)">Project</strong> — type a query to see where it would land in the space</p>
+        </div>
+        <div className="pt-2 border-t border-(--color-border-subtle)">
+          <p className="text-[10px] text-(--color-text-tertiary)">
+            768D nomic embeddings → UMAP 3D · colored by emotion
+          </p>
+        </div>
       </div>
     );
   }
@@ -358,7 +371,6 @@ export function Visualizer() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [genreDrillDown, setGenreDrillDown] = useState<string | null>(null);
   const [selected, setSelected] = useState<VizPoint | null>(null);
-  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number; z: number } | null>(null);
   const [query, setQuery] = useState("");
   const [projecting, setProjecting] = useState(false);
   const [projection, setProjection] = useState<ProjectionResult | null>(null);
@@ -402,7 +414,6 @@ export function Visualizer() {
 
   function handleSelect(point: VizPoint) {
     setSelected(point);
-    setFocusPoint({ x: point.x, y: point.y, z: point.z });
   }
 
   function handleSelectById(id: string) {
@@ -413,7 +424,6 @@ export function Visualizer() {
   function handleDismiss() {
     setSelected(null);
     setProjection(null);
-    setFocusPoint(null);
   }
 
   async function handleProject() {
@@ -423,16 +433,12 @@ export function Visualizer() {
       const result = await projectQuery(query.trim());
       setProjection(result);
       setSelected(null);
-      setFocusPoint({ x: result.x, y: result.y, z: result.z });
     } catch {
       setProjection(null);
     } finally {
       setProjecting(false);
     }
   }
-
-  // Whether the panel has content to show
-  const hasDetail = selected || projection;
 
   return (
     <div className="flex flex-col h-[calc(100vh-56px)] pt-14">
@@ -560,22 +566,19 @@ export function Visualizer() {
                   : null
               }
               dimmedIds={dimmedIds}
-              focusPoint={focusPoint}
             />
           )}
         </div>
 
-        {/* Right panel — song detail only */}
-        {hasDetail && (
-          <div className="w-[320px] max-lg:w-[280px] max-md:hidden flex-shrink-0 border-l border-(--color-border) bg-(--color-surface) overflow-y-auto">
-            <SongDetail
-              point={selected}
-              projection={projection}
-              onSelectId={handleSelectById}
-              onDismiss={handleDismiss}
-            />
-          </div>
-        )}
+        {/* Floating panel */}
+        <div className="absolute top-3 right-3 w-[300px] max-md:hidden rounded-(--radius-md) border border-(--color-border) bg-(--color-surface)/95 backdrop-blur-sm shadow-lg overflow-y-auto max-h-[calc(100%-24px)]">
+          <SongDetail
+            point={selected}
+            projection={projection}
+            onSelectId={handleSelectById}
+            onDismiss={handleDismiss}
+          />
+        </div>
       </div>
     </div>
   );
