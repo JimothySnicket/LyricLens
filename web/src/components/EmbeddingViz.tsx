@@ -322,20 +322,28 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     if (found) onSelect(found);
   }
 
-  // Update the connection line trace imperatively (bypasses React re-render)
+  // Draw dotted line from selected point to hovered point (imperative, no re-render)
   const handleHover = useCallback((event: Readonly<Plotly.PlotHoverEvent>) => {
     if (!selectedPoint || !plotRef.current) return;
-    const now = performance.now();
-    if (now - hoverThrottleRef.current < 80) return;
-    hoverThrottleRef.current = now;
 
     const pt = event.points[0];
     if (!pt) return;
-    const id = pt.customdata as string;
-    if (id === selectedId) return;
+
+    // Only draw line for real song points (have a string customdata id)
+    const id = pt.customdata;
+    if (typeof id !== "string" || !id) return;
+    if (id === selectedId) return; // don't connect to self
+
+    // Skip dimmed/connection/query traces
+    const traceName = (pt as any).data?.name;
+    if (traceName === "dimmed" || traceName === "connection" || traceName === "Query" || traceName === "selected-label") return;
+
+    const now = performance.now();
+    if (now - hoverThrottleRef.current < 100) return;
+    hoverThrottleRef.current = now;
 
     const el = plotRef.current;
-    const lastTraceIdx = el.data.length - 1; // connection trace is always last
+    const lastTraceIdx = el.data.length - 1;
     Plotly.restyle(el, {
       x: [[selectedPoint.x, pt.x as number]],
       y: [[selectedPoint.y, pt.y as number]],
