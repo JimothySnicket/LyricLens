@@ -30,36 +30,46 @@ const EMOTION_COLORS: Record<string, string> = {
 
 export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, focusPoint }: Props) {
   const plotRef = useRef<any>(null);
+  const centroidRef = useRef<{ x: number; y: number; z: number } | null>(null);
 
-  // Pan camera to face the focused point while keeping a fixed viewing distance
+  // Compute data centroid once
   useEffect(() => {
-    if (!focusPoint || !plotRef.current) return;
+    if (points.length === 0) return;
+    let sx = 0, sy = 0, sz = 0;
+    for (const p of points) { sx += p.x; sy += p.y; sz += p.z; }
+    const n = points.length;
+    centroidRef.current = { x: sx / n, y: sy / n, z: sz / n };
+  }, [points]);
+
+  // Rotate camera around the data centroid to face the selected point
+  useEffect(() => {
+    if (!focusPoint || !plotRef.current || !centroidRef.current) return;
 
     const el = plotRef.current;
+    const c = centroidRef.current;
+
+    // Direction from centroid toward the selected point
+    const dx = focusPoint.x - c.x;
+    const dy = focusPoint.y - c.y;
+    const dz = focusPoint.z - c.z;
+    const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+
+    // Get current camera distance from centroid
     const scene = el._fullLayout?.scene?._scene;
-    if (!scene) return;
+    const cam = scene?.getCamera?.();
+    const curEye = cam?.eye ?? { x: 1.5, y: 1.5, z: 1.2 };
+    const ex = curEye.x - c.x;
+    const ey = curEye.y - c.y;
+    const ez = curEye.z - c.z;
+    const viewDist = Math.sqrt(ex * ex + ey * ey + ez * ez) || 12;
 
-    const cam = scene.getCamera();
-    const curEye = cam.eye;
-    const curCenter = cam.center || { x: 0, y: 0, z: 0 };
-
-    // Keep the current viewing distance (how far the camera is from what it looks at)
-    const dx = curEye.x - curCenter.x;
-    const dy = curEye.y - curCenter.y;
-    const dz = curEye.z - curCenter.z;
-    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 4;
-
-    // Direction from focus point back to where the camera currently is (preserves viewing angle)
-    const dirX = dx / dist;
-    const dirY = dy / dist;
-    const dirZ = dz / dist;
-
+    // Place camera on the opposite side of centroid from the point
     Plotly.relayout(el, {
-      "scene.camera.center": { x: focusPoint.x, y: focusPoint.y, z: focusPoint.z },
+      "scene.camera.center": { x: c.x, y: c.y, z: c.z },
       "scene.camera.eye": {
-        x: focusPoint.x + dirX * dist,
-        y: focusPoint.y + dirY * dist,
-        z: focusPoint.z + dirZ * dist,
+        x: c.x - (dx / len) * viewDist,
+        y: c.y - (dy / len) * viewDist,
+        z: c.z - (dz / len) * viewDist,
       },
     });
   }, [focusPoint]);
