@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import { embedQuery } from "../lib/embedder";
 import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
+import { checkGeneralRateLimit, sanitizeInput } from "../lib/deepseek";
 
 const vizRoutes = new Hono();
 
@@ -22,11 +23,18 @@ vizRoutes.get("/data", (c) => {
 });
 
 vizRoutes.post("/project", async (c) => {
+  const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
+  const rateCheck = checkGeneralRateLimit(ip);
+  if (!rateCheck.allowed) return c.json({ error: rateCheck.reason }, 429);
+
   const { query } = await c.req.json<{ query: string }>();
   if (!query?.trim()) return c.json({ error: "query required" }, 400);
 
+  const clean = sanitizeInput(query.trim());
+  if (!clean) return c.json({ error: "Invalid query" }, 400);
+
   // 1. Embed the query
-  const vector = await embedQuery(query.trim());
+  const vector = await embedQuery(clean);
 
   // 2. Find 5 nearest songs in Qdrant (using lyrics vector)
   const client = getQdrantClient();
@@ -74,7 +82,7 @@ vizRoutes.post("/project", async (c) => {
     x: Math.round((px / totalWeight) * 1000000) / 1000000,
     y: Math.round((py / totalWeight) * 1000000) / 1000000,
     z: Math.round((pz / totalWeight) * 1000000) / 1000000,
-    query: query.trim(),
+    query: clean,
     nearest: nearestSongs,
   });
 });

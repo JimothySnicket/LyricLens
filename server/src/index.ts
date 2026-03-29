@@ -25,7 +25,8 @@ if (existsSync(envPath)) {
 
 const app = new Hono();
 
-app.use("/*", cors({ origin: "http://localhost:5200" }));
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5200";
+app.use("/*", cors({ origin: corsOrigin }));
 
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 app.route("/api/search", searchRoutes);

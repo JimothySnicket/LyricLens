@@ -69,6 +69,25 @@ const PER_IP_LIMIT = 15;
 const GLOBAL_LIMIT = 30;
 const WINDOW_MS = 60_000;
 
+// General rate limiter — covers all search/viz routes (more generous)
+const generalIpCounts = new Map<string, { count: number; resetAt: number }>();
+const GENERAL_PER_IP = 60;
+const GENERAL_WINDOW = 60_000;
+
+export function checkGeneralRateLimit(ip: string): { allowed: boolean; reason?: string } {
+  const now = Date.now();
+  let data = generalIpCounts.get(ip);
+  if (!data || now > data.resetAt) {
+    data = { count: 0, resetAt: now + GENERAL_WINDOW };
+    generalIpCounts.set(ip, data);
+  }
+  if (data.count >= GENERAL_PER_IP) {
+    return { allowed: false, reason: "Too many requests. Try again in a minute." };
+  }
+  data.count++;
+  return { allowed: true };
+}
+
 export function checkRateLimit(ip: string): { allowed: boolean; reason?: string } {
   const now = Date.now();
 

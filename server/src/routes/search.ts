@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { parseQuery } from "../lib/query-parser";
-import { checkRateLimit, sanitizeInput, callDeepSeek, callDeepSeekReasoner } from "../lib/deepseek";
+import { checkRateLimit, checkGeneralRateLimit, sanitizeInput, callDeepSeek, callDeepSeekReasoner } from "../lib/deepseek";
 import { getSongs } from "../lib/data";
 import { keywordSearch } from "../search/keyword";
 import { semanticSearch } from "../search/semantic";
@@ -231,6 +231,13 @@ searchRoutes.post("/:mode", async (c) => {
     return c.json({ error: "Invalid mode" }, 400);
   }
 
+  // General rate limit — all modes (60/min per IP)
+  const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
+  const generalCheck = checkGeneralRateLimit(ip);
+  if (!generalCheck.allowed) {
+    return c.json({ error: generalCheck.reason }, 429);
+  }
+
   const start = performance.now();
   const timing: Record<string, number> = {};
   let parsed: ParsedQuery = parseQuery(query);
@@ -239,7 +246,6 @@ searchRoutes.post("/:mode", async (c) => {
 
   if (mode === "natural") {
     // Pipeline 4: Multi-query strategy — generate 3 search configs, run all, LLM picks best
-    const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
     const rateCheck = checkRateLimit(ip);
     if (!rateCheck.allowed) {
       return c.json({ error: rateCheck.reason }, 429);
@@ -320,7 +326,6 @@ searchRoutes.post("/:mode", async (c) => {
     }
   } else if (mode === "deep") {
     // Pipeline 5: Full-agent — reason, 3 configs, see results, pick/refine
-    const ip = c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
     const rateCheck = checkRateLimit(ip);
     if (!rateCheck.allowed) {
       return c.json({ error: rateCheck.reason }, 429);
