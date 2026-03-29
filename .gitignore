@@ -9,3 +9,5 @@ pipeline/.venv/
 .firecrawl/
 nul
 server/src/eval/results/
+.playwright-mcp/
+docs/a11y/
