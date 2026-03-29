@@ -154,7 +154,11 @@ function useDimmedIds(
     for (const p of points) {
       let match = false;
       if (lens === "genre") {
-        if (genreDrillDown) {
+        if (genreDrillDown && activeFilter === genreDrillDown) {
+          // Filtering by meta-genre (just drilled down, or cleared sub-genre filter)
+          match = p.metaGenre === activeFilter;
+        } else if (genreDrillDown) {
+          // Filtering by sub-genre within drill-down
           match = p.genre === activeFilter;
         } else {
           match = p.metaGenre === activeFilter;
@@ -462,7 +466,7 @@ export function Visualizer() {
   function handleLegendItemClick(key: string) {
     if (lens === "genre" && !genreDrillDown) {
       setGenreDrillDown(key);
-      setActiveFilter(null);
+      setActiveFilter(key); // filter to meta-genre immediately
       return;
     }
     setActiveFilter((prev) => (prev === key ? null : key));
@@ -623,7 +627,7 @@ export function Visualizer() {
       </div>
 
       {/* Row 2: Legend chips + emotion key */}
-      <div className="px-4 py-1.5 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center gap-2 overflow-x-auto">
+      <div className="px-4 py-1.5 border-b border-(--color-border) bg-(--color-bg) flex-shrink-0 flex items-center gap-2 overflow-x-auto scrollbar-subtle">
         {/* Back button for genre drill-down */}
         {genreDrillDown && (
           <button

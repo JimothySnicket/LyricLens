@@ -188,7 +188,7 @@ export const SemanticAnimation: React.FC<Props> = ({ content }) => {
           color: "var(--color-text-secondary)",
           maxWidth: 700,
           alignSelf: "center",
-          marginBottom: 16,
+          marginBottom: 12,
         }}
       >
         {content.explanation}

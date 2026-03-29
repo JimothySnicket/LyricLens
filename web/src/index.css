@@ -77,6 +77,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.scrollbar-subtle::-webkit-scrollbar {
+  height: 4px;
+}
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
 .snap-container {
   height: 100vh;
   overflow-y: auto;

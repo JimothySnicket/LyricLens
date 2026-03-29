@@ -246,7 +246,7 @@ function SearchSection() {
             <p className="text-[10px] uppercase tracking-[0.3em] text-(--color-text-tertiary) mb-3">
               Try it yourself
             </p>
-            <h2 className="text-3xl font-bold text-(--color-text) mb-2">
+            <h2 className="text-2xl font-bold text-(--color-text) mb-2">
               Search four ways
             </h2>
             <p className="text-sm text-(--color-text-secondary)">
@@ -361,10 +361,10 @@ function SearchSection() {
                 <Reveal key={mode} delay={modeLoading ? 0 : 0}>
                   <div className="flex flex-col h-full">
                     {/* Column header */}
-                    <div className="px-4 py-3 border border-b-0 border-(--color-border) rounded-t-lg bg-(--color-bg-secondary)">
+                    <div className="px-3 py-2.5 border border-b-0 border-(--color-border) rounded-t-lg bg-(--color-bg-secondary)">
                       <div className="flex items-center gap-2 mb-0.5">
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
-                        <span className="text-sm font-semibold text-(--color-text)">{m.label}</span>
+                        <span className="text-xs font-semibold text-(--color-text)">{m.label}</span>
                         <span className="ml-auto text-[10px] text-(--color-text-tertiary) font-mono">
                           {modeLoading ? "" : `${r?.searchTimeMs ?? 0}ms`}
                         </span>
@@ -434,18 +434,18 @@ function ResultRow({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full text-left px-3 py-2.5 flex items-start gap-2 hover:bg-(--color-bg-secondary) transition-colors"
+        className="w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-(--color-bg-secondary) transition-colors"
       >
         <span className="text-[10px] font-mono text-(--color-text-tertiary) w-3 shrink-0 pt-1">{rank}</span>
         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-white shrink-0" style={{ backgroundColor: color }}>
           {sc}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-(--color-text) truncate">{song.title}</p>
-          <p className="text-[11px] text-(--color-text-secondary) truncate">{song.artist}</p>
+          <p className="text-xs font-medium text-(--color-text) truncate">{song.title}</p>
+          <p className="text-[10px] text-(--color-text-secondary) truncate">{song.artist}</p>
           <div className="flex gap-1 mt-1">
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.genre}</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.year}</span>
+            <span className="text-[8px] px-1 py-px rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.genre}</span>
+            <span className="text-[8px] px-1 py-px rounded bg-(--color-bg-tertiary) text-(--color-text-tertiary)">{song.year}</span>
           </div>
         </div>
       </button>

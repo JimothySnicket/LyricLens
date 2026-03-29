@@ -69,8 +69,8 @@ export function SongCard({
         transform: `translateY(${y}px)`,
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "10px 14px",
+        gap: 10,
+        padding: "7px 12px",
         borderRadius: 8,
         border: "1px solid var(--color-border)",
         backgroundColor: "var(--color-bg-secondary)",
@@ -78,23 +78,23 @@ export function SongCard({
     >
       <span
         style={{
-          fontSize: 18,
+          fontSize: 14,
           fontWeight: 700,
           color: iconColor,
           flexShrink: 0,
-          width: 24,
+          width: 20,
           textAlign: "center" as const,
         }}
       >
         {icon}
       </span>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text)" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
           {highlight && accentColor
             ? highlightWord(title, highlight, accentColor)
             : title}
         </div>
-        <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 1 }}>
+        <div style={{ fontSize: 11, color: "var(--color-text-secondary)", marginTop: 1 }}>
           {artist}
           {year ? ` \u00b7 ${year}` : ""}
         </div>

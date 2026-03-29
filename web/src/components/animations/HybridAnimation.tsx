@@ -29,8 +29,22 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
   const queryOpacity = frame >= EXPLAIN_END ? 1 : 0;
   const typeEnd = EXPLAIN_END + 25;
 
+  // --- Decomposition pills: query splits into filters + semantic ---
+  const decompStart = typeEnd + 5;
+  const decompEnd = decompStart + 25;
+  const filters = content.filters ?? [
+    { label: "decade", value: "90s" },
+    { label: "genre", value: "R&B" },
+  ];
+  const semanticText = content.semanticRemainder ?? "heartbreak";
+
+  const decompOpacity = interpolate(frame, [decompStart, decompStart + 10], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   // --- Three columns appear in sequence ---
-  const col1Start = typeEnd + 5;
+  const col1Start = decompEnd + 5;
   const col2Start = col1Start + 40;
   const col3Start = col2Start + 40;
 
@@ -118,6 +132,87 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
         </span>
       </div>
 
+      {/* Decomposition — query splits into filters + semantic */}
+      {frame >= decompStart && (
+        <div
+          style={{
+            opacity: decompOpacity,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", fontWeight: 600, letterSpacing: 0.5 }}>
+            FILTERS
+          </span>
+          {filters.map((f, i) => {
+            const pillAppear = interpolate(
+              frame,
+              [decompStart + 4 + i * 6, decompStart + 10 + i * 6],
+              [0, 1],
+              { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+            );
+            return (
+              <span
+                key={i}
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  borderRadius: 10,
+                  opacity: pillAppear,
+                  color: "white",
+                  backgroundColor: "#e65100",
+                  transform: `translateY(${(1 - pillAppear) * 4}px)`,
+                }}
+              >
+                {f.label}: {f.value}
+              </span>
+            );
+          })}
+          <span
+            style={{
+              width: 1,
+              height: 16,
+              backgroundColor: "var(--color-border)",
+              margin: "0 4px",
+              opacity: interpolate(frame, [decompStart + 12, decompStart + 16], [0, 0.5], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }),
+            }}
+          />
+          <span style={{ fontSize: 10, color: "var(--color-text-tertiary)", fontWeight: 600, letterSpacing: 0.5 }}>
+            MEANING
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "3px 8px",
+              borderRadius: 10,
+              opacity: interpolate(frame, [decompStart + 14, decompStart + 20], [0, 1], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }),
+              color: "white",
+              backgroundColor: "#1565c0",
+              transform: `translateY(${(1 - interpolate(frame, [decompStart + 14, decompStart + 20], [0, 1], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              })) * 4}px)`,
+            }}
+          >
+            {semanticText}
+          </span>
+        </div>
+      )}
+
       {/* Three-column comparison */}
       <div
         style={{
@@ -137,12 +232,12 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
               letterSpacing: 1.2,
               textTransform: "uppercase" as const,
               color: "#e65100",
-              marginBottom: 6,
+              marginBottom: 8,
             }}
           >
             Keyword alone
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {kwResults.map((r, i) => (
               <SongCard
                 key={`kw-${i}`}
@@ -158,7 +253,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
           <div
             style={{
               opacity: kwCaptionOpacity,
-              fontSize: 10,
+              fontSize: 11,
               fontStyle: "italic",
               color: "var(--color-text-tertiary)",
               marginTop: 6,
@@ -177,12 +272,12 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
               letterSpacing: 1.2,
               textTransform: "uppercase" as const,
               color: "#1565c0",
-              marginBottom: 6,
+              marginBottom: 8,
             }}
           >
             Semantic alone
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {seResults.map((r, i) => (
               <SongCard
                 key={`se-${i}`}
@@ -198,7 +293,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
           <div
             style={{
               opacity: seCaptionOpacity,
-              fontSize: 10,
+              fontSize: 11,
               fontStyle: "italic",
               color: "var(--color-text-tertiary)",
               marginTop: 6,
@@ -227,12 +322,12 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
               letterSpacing: 1.2,
               textTransform: "uppercase" as const,
               color: content.fallbackColor,
-              marginBottom: 6,
+              marginBottom: 8,
             }}
           >
             {"\u2713"} Hybrid — both
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {hyResults.map((r, i) => (
               <SongCard
                 key={`hy-${i}`}
@@ -249,7 +344,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
           <div
             style={{
               opacity: hyCaptionOpacity,
-              fontSize: 10,
+              fontSize: 11,
               fontStyle: "italic",
               color: "var(--color-text-tertiary)",
               marginTop: 6,

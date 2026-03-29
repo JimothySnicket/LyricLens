@@ -5,11 +5,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 export interface UseSnapScrollOptions {
   /** Total number of sections */
   sectionCount: number;
-  /** IntersectionObserver threshold for "active" section */
-  threshold?: number;
 }
 
-export function useSnapScroll({ sectionCount, threshold = 0.6 }: UseSnapScrollOptions) {
+export function useSnapScroll({ sectionCount }: UseSnapScrollOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -26,28 +24,46 @@ export function useSnapScroll({ sectionCount, threshold = 0.6 }: UseSnapScrollOp
     }
   }, [sectionCount]);
 
-  // IntersectionObserver to track active section
+  // IntersectionObserver to track active section.
+  // Uses a low threshold so tall (scrollable) sections still register,
+  // then picks whichever section has the highest intersection ratio.
   useEffect(() => {
-    const observers: IntersectionObserver[] = [];
+    const root = containerRef.current;
+    if (!root) return;
 
-    sectionRefs.current.forEach((section, index) => {
-      if (!section) return;
+    const ratios = new Map<number, number>();
 
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setActiveIndex(index);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const idx = sectionRefs.current.indexOf(entry.target as HTMLElement);
+          if (idx !== -1) {
+            ratios.set(idx, entry.intersectionRatio);
           }
-        },
-        { threshold }
-      );
+        }
 
-      observer.observe(section);
-      observers.push(observer);
-    });
+        // Pick the section with the highest visible ratio
+        let bestIdx = -1;
+        let bestRatio = 0;
+        for (const [idx, ratio] of ratios) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestIdx = idx;
+          }
+        }
+        if (bestIdx !== -1 && bestRatio > 0) {
+          setActiveIndex(bestIdx);
+        }
+      },
+      { root, threshold: [0, 0.1, 0.3, 0.5, 0.7, 1] }
+    );
 
-    return () => observers.forEach((o) => o.disconnect());
-  }, [threshold, sectionCount]);
+    for (const section of sectionRefs.current) {
+      if (section) observer.observe(section);
+    }
+
+    return () => observer.disconnect();
+  }, [sectionCount]);
 
   // Keyboard navigation
   useEffect(() => {

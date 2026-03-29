@@ -69,7 +69,7 @@ export function AnimationSection({
       {/* Colored number badge */}
       <div
         style={{
-          marginTop: 8,
+          marginTop: 24,
           width: 36,
           height: 36,
           borderRadius: "50%",

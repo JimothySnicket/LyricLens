@@ -20,8 +20,6 @@ export function Nav({ visible = true, onNavigate }: NavProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  if (!visible) return null;
-
   const isHome = pathname === "/";
 
   function handleNav(index: number) {
@@ -35,7 +33,7 @@ export function Nav({ visible = true, onNavigate }: NavProps) {
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: 1, y: visible ? 0 : -60 }}
       transition={{ duration: 0.3 }}
       className="fixed top-0 left-0 right-0 z-50 border-b border-(--color-border) bg-(--color-bg)/95 backdrop-blur-sm"
     >
