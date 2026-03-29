@@ -608,11 +608,14 @@ export function Visualizer() {
             ))}
           </div>
           <input
+            id="viz-query"
+            name="viz-query"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder={searchMode === "project" ? "Project a query..." : "Search and visualize..."}
+            aria-label="Visualizer query"
             className="text-xs px-3 py-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-accent) w-48"
           />
           <button

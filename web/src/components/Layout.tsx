@@ -8,7 +8,9 @@ export function Layout() {
   return (
     <>
       {!isMain && <Nav />}
-      <Outlet />
+      <main>
+        <Outlet />
+      </main>
     </>
   );
 }

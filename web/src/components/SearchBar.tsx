@@ -36,11 +36,14 @@ export function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
     <div className="w-full">
       <div className="flex gap-2">
         <input
+          id="search-query"
+          name="search-query"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="dive bar at 2am..."
+          aria-label="Search query"
           className="flex-1 px-4 py-3 rounded-[var(--radius-md)] bg-(--color-surface) border border-(--color-border) text-(--color-text) placeholder:text-(--color-text-tertiary) text-base outline-none focus:border-(--color-accent) transition-colors"
         />
         <button

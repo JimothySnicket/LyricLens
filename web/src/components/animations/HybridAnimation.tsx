@@ -166,7 +166,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
                   borderRadius: 10,
                   opacity: pillAppear,
                   color: "white",
-                  backgroundColor: "#e65100",
+                  backgroundColor: "#c43e00",
                   transform: `translateY(${(1 - pillAppear) * 4}px)`,
                 }}
               >
@@ -231,7 +231,7 @@ export const HybridAnimation: React.FC<Props> = ({ content }) => {
               fontWeight: 700,
               letterSpacing: 1.2,
               textTransform: "uppercase" as const,
-              color: "#e65100",
+              color: "#c43e00",
               marginBottom: 8,
             }}
           >

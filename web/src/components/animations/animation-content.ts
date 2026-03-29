@@ -61,7 +61,7 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     label: "Keyword Search",
     desc: "Phrase matching + scoring",
     cssVar: "--color-mode-keyword",
-    fallbackColor: "#e65100",
+    fallbackColor: "#c43e00",
 
     explanation:
       "Keyword search finds the longest matching phrase in every song title, lyric, and artist name. Longer sequences score exponentially higher \u2014 so an exact title match always beats scattered single words.",

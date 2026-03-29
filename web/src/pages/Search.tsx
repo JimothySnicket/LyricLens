@@ -9,7 +9,7 @@ const MODE_INFO: Record<ComparisonMode, { label: string; description: string; co
   keyword: {
     label: "Keyword",
     description: "Phrase matching + sequence scoring",
-    color: "var(--color-mode-keyword, #e65100)",
+    color: "var(--color-mode-keyword, #c43e00)",
   },
   semantic: {
     label: "Semantic",

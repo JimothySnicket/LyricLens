@@ -128,7 +128,7 @@ function IntroSection({ onSkipToSearch }: { onSkipToSearch: () => void }) {
 // Section 6: Search
 // ---------------------------------------------------------------------------
 const MODE_META: Record<ComparisonMode | "deep", { label: string; desc: string; color: string }> = {
-  keyword: { label: "Keyword", desc: "Phrase matching + scoring", color: "#e65100" },
+  keyword: { label: "Keyword", desc: "Phrase matching + scoring", color: "#c43e00" },
   semantic: { label: "Semantic", desc: "Vector similarity + filters", color: "#1565c0" },
   hybrid: { label: "Hybrid", desc: "Keyword + vector merged", color: "#6a1b9a" },
   natural: { label: "Natural Language", desc: "LLM multi-query", color: "#2e7d32" },
