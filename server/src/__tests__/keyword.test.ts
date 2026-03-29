@@ -17,17 +17,22 @@ const makeSong = (overrides: Partial<Song>): Song => ({
   ...overrides,
 });
 
-const makeParsed = (overrides: Partial<ParsedQuery>): ParsedQuery => ({
-  scopeTitle: false,
-  scopeLyrics: false,
-  scopeArtist: false,
-  filters: { decades: [], genres: [], moods: [], audioFeatures: [], artistHint: [] },
-  searchPhrase: "",
-  semanticText: "",
-  terms: [],
-  interpretations: [],
-  ...overrides,
-});
+const makeParsed = (overrides: Partial<ParsedQuery>): ParsedQuery => {
+  const phrase = overrides.searchPhrase ?? "";
+  const words = phrase.split(/\s+/).filter(w => w.length > 0);
+  return {
+    scopeTitle: false,
+    scopeLyrics: false,
+    scopeArtist: false,
+    filters: { decades: [], genres: [], moods: [], audioFeatures: [], artistHint: [] },
+    searchPhrase: phrase,
+    semanticText: "",
+    terms: overrides.terms ?? words,
+    termsUnfiltered: overrides.termsUnfiltered ?? words,
+    interpretations: [],
+    ...overrides,
+  };
+};
 
 describe("keywordSearch — sequence scoring", () => {
   test("4-word title phrase scores n²×2 = 32", () => {
@@ -92,7 +97,7 @@ describe("keywordSearch — sequence scoring", () => {
     expect(results[0].score).toBe(results[1].score);
   });
 
-  test("decade hard filter still excludes non-matching decades", () => {
+  test("decade match boosts score — matching decade ranks higher", () => {
     const songs = [
       makeSong({ id: "80s", title: "Love Song", decade: 1980 }),
       makeSong({ id: "90s", title: "Love Song", decade: 1990 }),
@@ -102,11 +107,12 @@ describe("keywordSearch — sequence scoring", () => {
       filters: { decades: [1980], genres: [], moods: [], audioFeatures: [], artistHint: [] },
     });
     const results = keywordSearch(songs, parsed);
-    expect(results.length).toBe(1);
+    expect(results.length).toBe(2);
     expect(results[0].song.id).toBe("80s");
+    expect(results[0].score).toBeGreaterThan(results[1].score);
   });
 
-  test("artist hard filter still excludes non-matching artists", () => {
+  test("artist hint boosts score — matching artist ranks first", () => {
     const songs = [
       makeSong({ id: "ej", title: "Sad Songs", artist: "Elton John" }),
       makeSong({ id: "other", title: "Sad Songs", artist: "Someone Else" }),
@@ -117,8 +123,8 @@ describe("keywordSearch — sequence scoring", () => {
       filters: { decades: [], genres: [], moods: [], audioFeatures: [], artistHint: ["elton", "john"] },
     });
     const results = keywordSearch(songs, parsed);
-    expect(results.length).toBe(1);
     expect(results[0].song.id).toBe("ej");
+    expect(results[0].score).toBeGreaterThan(results[1].score);
   });
 
   test("decade match adds +2 bonus", () => {

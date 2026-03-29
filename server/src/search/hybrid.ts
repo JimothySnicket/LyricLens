@@ -2,8 +2,13 @@ import { keywordSearch } from "./keyword";
 import { semanticSearch } from "./semantic";
 import type { Song, ParsedQuery, SearchResult } from "../lib/types";
 
-const KEYWORD_WEIGHT = 0.4;
-const VECTOR_WEIGHT = 0.6;
+const BASE_KEYWORD_WEIGHT = 0.4;
+
+// When keyword's best score is below this, keyword matches are weak
+// (e.g. just "bar" in lyrics) and shouldn't dominate the blend.
+// A 2-word lyrics match = 4 * 1.5 = 6, a 1-word title = 1 * 2 = 2.
+// A strong keyword match (3+ word title) = 9 * 2 = 18+.
+const KEYWORD_CONFIDENCE_THRESHOLD = 8;
 
 export async function hybridSearch(
   parsed: ParsedQuery,
@@ -31,6 +36,12 @@ export async function hybridSearch(
   const maxKeyword = keywordResults.length > 0
     ? keywordResults[0].score
     : 1;
+
+  // When keyword matches are weak, reduce keyword's weight in the blend
+  // so noise like "bar" in lyrics doesn't drown out semantic matches
+  const keywordConfidence = maxKeyword >= KEYWORD_CONFIDENCE_THRESHOLD ? 1.0 : maxKeyword / KEYWORD_CONFIDENCE_THRESHOLD;
+  const kwWeight = BASE_KEYWORD_WEIGHT * keywordConfidence;
+  const vecWeight = 1 - kwWeight; // semantic gets the remainder
 
   for (const kr of keywordResults) {
     merged.set(kr.song.id, {
@@ -63,8 +74,8 @@ export async function hybridSearch(
 
   for (const entry of merged.values()) {
     const blended =
-      entry.keywordScore * KEYWORD_WEIGHT +
-      entry.vectorScore * VECTOR_WEIGHT;
+      entry.keywordScore * kwWeight +
+      entry.vectorScore * vecWeight;
 
     const reasons: string[] = [];
     if (entry.keywordScore > 0) reasons.push(entry.keywordReason);

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, useInView } from "motion/react";
-import type { SearchMode, SearchResponse } from "../lib/types";
-import { search } from "../lib/api";
+import type { SearchResponse } from "../lib/types";
+import { search, type ComparisonMode } from "../lib/api";
 import { SearchBar } from "../components/SearchBar";
 import { QueryChips } from "../components/QueryChips";
 import { useSnapScroll } from "../hooks/useSnapScroll";
@@ -127,22 +127,26 @@ function IntroSection({ onSkipToSearch }: { onSkipToSearch: () => void }) {
 // ---------------------------------------------------------------------------
 // Section 6: Search
 // ---------------------------------------------------------------------------
-const MODE_META: Record<SearchMode, { label: string; desc: string; color: string }> = {
-  keyword: { label: "Keyword", desc: "Regex + exact matching", color: "#e65100" },
-  semantic: { label: "Semantic", desc: "Vector similarity", color: "#1565c0" },
-  hybrid: { label: "Hybrid", desc: "Filters + vectors", color: "#6a1b9a" },
-  natural: { label: "Natural Language", desc: "LLM + vectors", color: "#2e7d32" },
+const MODE_META: Record<ComparisonMode | "deep", { label: string; desc: string; color: string }> = {
+  keyword: { label: "Keyword", desc: "Phrase matching + scoring", color: "#e65100" },
+  semantic: { label: "Semantic", desc: "Vector similarity + filters", color: "#1565c0" },
+  hybrid: { label: "Hybrid", desc: "Keyword + vector merged", color: "#6a1b9a" },
+  natural: { label: "Natural Language", desc: "LLM multi-query", color: "#2e7d32" },
+  deep: { label: "Deep Search", desc: "LLM reason + multi-query + reflect", color: "#00838f" },
 };
-const MODES: SearchMode[] = ["keyword", "semantic", "hybrid", "natural"];
+const MODES: ComparisonMode[] = ["keyword", "semantic", "hybrid", "natural"];
 
 function SearchSection() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Partial<Record<SearchMode, SearchResponse>>>({});
-  const [loadingModes, setLoadingModes] = useState<Set<SearchMode>>(new Set());
+  const [results, setResults] = useState<Partial<Record<ComparisonMode, SearchResponse>>>({});
+  const [loadingModes, setLoadingModes] = useState<Set<ComparisonMode>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [deepEnabled, setDeepEnabled] = useState(false);
+  const [deepResult, setDeepResult] = useState<SearchResponse | null>(null);
+  const [deepLoading, setDeepLoading] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const loading = loadingModes.size > 0;
@@ -155,13 +159,24 @@ function SearchSection() {
     setError(null);
     setExpanded(new Set());
     setSummary(null);
+    setDeepResult(null);
 
     // Scroll to results after the summary box renders
     requestAnimationFrame(() => {
       resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
-    const collected: Partial<Record<SearchMode, SearchResponse>> = {};
+    // Launch deep search if enabled (runs in parallel with the 4 core modes)
+    let deepPromise: Promise<SearchResponse | null> = Promise.resolve(null);
+    if (deepEnabled) {
+      setDeepLoading(true);
+      deepPromise = search(q, "deep")
+        .then((res) => { setDeepResult(res); return res; })
+        .catch(() => null)
+        .finally(() => setDeepLoading(false));
+    }
+
+    const collected: Partial<Record<ComparisonMode, SearchResponse>> = {};
 
     const promises = MODES.map(async (mode) => {
       try {
@@ -179,14 +194,16 @@ function SearchSection() {
       }
     });
 
-    await Promise.all(promises);
+    // Wait for all modes + deep (if enabled) before generating summary
+    const [, deepRes] = await Promise.all([Promise.all(promises), deepPromise]);
 
     if (Object.keys(collected).length > 0) {
-      fetchSummary(q, collected as Record<SearchMode, SearchResponse>);
+      if (deepRes) (collected as any).deep = deepRes;
+      fetchSummary(q, collected as Record<ComparisonMode, SearchResponse>);
     }
   }
 
-  async function fetchSummary(q: string, res: Record<SearchMode, SearchResponse>) {
+  async function fetchSummary(q: string, res: Record<ComparisonMode, SearchResponse>) {
     setSummaryLoading(true);
     try {
       const modeResults = MODES.map((m) => ({
@@ -263,9 +280,28 @@ function SearchSection() {
           </div>
         </Reveal>
 
-        {/* Search bar */}
+        {/* Search bar + deep toggle */}
         <div className="max-w-2xl mx-auto mb-8">
           <SearchBar onSearch={handleSearch} initialQuery={query} />
+          <div className="flex items-center justify-center mt-3 gap-2">
+            <button
+              type="button"
+              title="Toggle deep search mode"
+              onClick={() => setDeepEnabled((v) => !v)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                deepEnabled ? "bg-[#00838f]" : "bg-(--color-border)"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                  deepEnabled ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+            <span className="text-xs text-(--color-text-tertiary)">
+              Deep Search <span className="text-(--color-text-quaternary)">(LLM reasoning + reflection, ~25s)</span>
+            </span>
+          </div>
         </div>
 
         {/* Loading */}
@@ -311,13 +347,14 @@ function SearchSection() {
           </div>
         )}
 
-        {/* Four columns */}
+        {/* Result columns */}
         {searchActive && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            {MODES.map((mode) => {
-              const r = results[mode];
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${deepEnabled ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
+            {[...MODES, ...(deepEnabled ? ["deep" as const] : [])].map((mode) => {
+              const isDeep = mode === "deep";
+              const r = isDeep ? deepResult : results[mode as ComparisonMode];
               const m = MODE_META[mode];
-              const modeLoading = loadingModes.has(mode);
+              const modeLoading = isDeep ? deepLoading : loadingModes.has(mode as ComparisonMode);
               const count = r?.results?.length ?? 0;
 
               return (
@@ -343,7 +380,7 @@ function SearchSection() {
                       {modeLoading ? (
                         <div className="px-4 py-10 flex items-center justify-center gap-2">
                           <div className="w-3 h-3 rounded-full border border-(--color-border) border-t-(--color-text) animate-spin" />
-                          <span className="text-xs text-(--color-text-tertiary)">Searching…</span>
+                          <span className="text-xs text-(--color-text-tertiary)">{isDeep ? "Deep searching…" : "Searching…"}</span>
                         </div>
                       ) : count > 0 ? (
                         <div className="divide-y divide-(--color-border)">

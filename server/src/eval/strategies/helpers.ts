@@ -33,6 +33,7 @@ export function buildParsedQuery(raw: string, decomposed: DecomposedQuery): Pars
     searchPhrase: raw.toLowerCase().trim(),
     semanticText: decomposed.semantic || raw,
     terms: (decomposed.semantic || raw).split(/\s+/).filter(t => t.length > 1),
+    termsUnfiltered: raw.toLowerCase().trim().split(/\s+/).filter(t => t.length > 1),
     interpretations: [],
   };
 }

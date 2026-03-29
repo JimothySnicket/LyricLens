@@ -131,6 +131,37 @@ export async function callDeepSeek(
 }
 
 // ---------------------------------------------------------------------------
+// DeepSeek Reasoner — used as an independent judge for result selection
+// ---------------------------------------------------------------------------
+export async function callDeepSeekReasoner(
+  userMessage: string,
+  maxTokens: number,
+): Promise<string> {
+  const resp = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-reasoner",
+      messages: [
+        { role: "user", content: userMessage },
+      ],
+      max_tokens: maxTokens,
+    }),
+    signal: AbortSignal.timeout(30_000), // reasoner takes longer
+  });
+
+  if (!resp.ok) {
+    throw new Error(`DeepSeek Reasoner API error: ${resp.status}`);
+  }
+
+  const data = await resp.json() as any;
+  return (data.choices?.[0]?.message?.content ?? "").trim();
+}
+
+// ---------------------------------------------------------------------------
 // Query Parser — returns strict JSON
 // ---------------------------------------------------------------------------
 const PARSER_SYSTEM_PROMPT = `You parse music search queries into structured JSON. Return ONLY valid JSON matching this exact schema, nothing else:

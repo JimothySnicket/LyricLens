@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { EmbeddingViz } from "../components/EmbeddingViz";
-import { getVizData, projectQuery } from "../lib/api";
-import type { VizData, ProjectionResult } from "../lib/types";
+import { getVizData, projectQuery, search } from "../lib/api";
+import type { VizData, ProjectionResult, SearchResponse } from "../lib/types";
+import type { ComparisonMode } from "../lib/api";
 
 type Lens = "genre" | "decade" | "cluster";
 type VizPoint = VizData["points"][number];
@@ -176,14 +177,70 @@ function useDimmedIds(
 function SongDetail({
   point,
   projection,
+  searchResults,
+  searchMode,
   onSelectId,
   onDismiss,
 }: {
   point: VizPoint | null;
   projection: ProjectionResult | null;
+  searchResults: SearchResponse | null;
+  searchMode: string;
   onSelectId: (id: string) => void;
   onDismiss: () => void;
 }) {
+  // Search results (pipeline mode, no song selected)
+  if (!point && searchResults) {
+    const top = searchResults.results.slice(0, 5);
+    const total = searchResults.results.length;
+    return (
+      <div className="p-4 space-y-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-1">
+              {searchMode.toUpperCase()} Search
+            </p>
+            <p className="text-sm font-medium text-[#22d3ee]">"{projection?.query}"</p>
+            <p className="text-[10px] text-(--color-text-tertiary) mt-1">
+              {total} results highlighted · {searchResults.searchTimeMs}ms
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="text-(--color-text-tertiary) hover:text-(--color-text) text-sm cursor-pointer shrink-0"
+          >
+            &#10005;
+          </button>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-(--color-text-tertiary) mb-2">
+            Top Results
+          </p>
+          <div className="space-y-1.5">
+            {top.map((r, i) => (
+              <button
+                type="button"
+                key={r.song.id}
+                onClick={() => onSelectId(String(r.song.id))}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-(--radius-sm) bg-(--color-bg-tertiary) hover:bg-(--color-border) transition-colors cursor-pointer text-left"
+              >
+                <span className="text-[10px] font-mono font-semibold text-(--color-text-tertiary) w-4 text-center">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-(--color-text) truncate">{r.song.title}</p>
+                  <p className="text-[10px] text-(--color-text-tertiary)">{r.song.artist} · {r.song.year}</p>
+                </div>
+                <span className="text-[10px] font-mono text-(--color-text-tertiary)">
+                  {r.mode === "keyword" ? r.score.toFixed(1) : r.score.toFixed(3)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Projection results (no song selected)
   if (!point && projection) {
     return (
@@ -375,6 +432,9 @@ export function Visualizer() {
   const [query, setQuery] = useState("");
   const [projecting, setProjecting] = useState(false);
   const [projection, setProjection] = useState<ProjectionResult | null>(null);
+  const [searchMode, setSearchMode] = useState<ComparisonMode | "project">("project");
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [showAllPoints, setShowAllPoints] = useState(true); // false = only show search results
 
   const legendItems = useLegendItems(points, lens, genreDrillDown);
   const dimmedIds = useDimmedIds(points, lens, activeFilter, genreDrillDown);
@@ -419,29 +479,75 @@ export function Visualizer() {
   }
 
   function handleSelectById(id: string) {
-    const found = points.find((p) => p.id === id);
+    // Try direct ID match first (works for projection nearest), then title+artist match (search results use numeric IDs)
+    let found = points.find((p) => p.id === id);
+    if (!found && searchResults) {
+      const song = searchResults.results.find((r) => String(r.song.id) === id)?.song;
+      if (song) {
+        const key = `${song.title}|||${song.artist}`.toLowerCase();
+        found = points.find((p) => `${p.title}|||${p.artist}`.toLowerCase() === key);
+      }
+    }
     if (found) handleSelect(found);
   }
 
   function handleDismiss() {
     setSelected(null);
     setProjection(null);
+    setSearchResults(null);
     setFocusPoint(null);
   }
 
-  async function handleProject() {
+  // IDs of all search results — highlighted in the 3D cloud
+  // Search uses numeric Qdrant IDs, viz uses slug IDs — match by title+artist
+  const highlightedIds = useMemo(() => {
+    if (!searchResults?.results?.length || points.length === 0) return null;
+    const searchKeys = new Set(
+      searchResults.results.map((r) => `${r.song.title}|||${r.song.artist}`.toLowerCase())
+    );
+    const ids = new Set<string>();
+    for (const p of points) {
+      if (searchKeys.has(`${p.title}|||${p.artist}`.toLowerCase())) {
+        ids.add(p.id);
+      }
+    }
+    return ids.size > 0 ? ids : null;
+  }, [searchResults, points]);
+
+  async function handleSearch() {
     if (!query.trim() || projecting) return;
     setProjecting(true);
+    setSelected(null);
+    setSearchResults(null);
+    setProjection(null);
+
     try {
-      const result = await projectQuery(query.trim());
-      setProjection(result);
-      setSelected(null);
-      setFocusPoint({ x: result.x, y: result.y, z: result.z });
+      if (searchMode === "project") {
+        const result = await projectQuery(query.trim());
+        setProjection(result);
+        setFocusPoint({ x: result.x, y: result.y, z: result.z });
+      } else {
+        const [searchRes, projRes] = await Promise.all([
+          search(query.trim(), searchMode),
+          projectQuery(query.trim()),
+        ]);
+        setSearchResults(searchRes);
+        setProjection(projRes);
+        setFocusPoint({ x: projRes.x, y: projRes.y, z: projRes.z });
+      }
     } catch {
       setProjection(null);
+      setSearchResults(null);
     } finally {
       setProjecting(false);
     }
+  }
+
+  function clearSearch() {
+    setSearchResults(null);
+    setProjection(null);
+    setSelected(null);
+    setFocusPoint(null);
   }
 
   return (
@@ -475,21 +581,43 @@ export function Visualizer() {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 bg-(--color-bg-secondary) rounded-(--radius-sm) p-0.5">
+            {([
+              { value: "project", label: "Project" },
+              { value: "keyword", label: "KW" },
+              { value: "semantic", label: "Sem" },
+              { value: "hybrid", label: "Hyb" },
+              { value: "natural", label: "NL" },
+            ] as { value: typeof searchMode; label: string }[]).map((opt) => (
+              <button
+                type="button"
+                key={opt.value}
+                onClick={() => setSearchMode(opt.value)}
+                className={`text-[10px] px-1.5 py-1 rounded transition-colors cursor-pointer ${
+                  searchMode === opt.value
+                    ? "bg-(--color-accent) text-(--color-text-inverse)"
+                    : "text-(--color-text-secondary) hover:text-(--color-text)"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleProject()}
-            placeholder="Project a query..."
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder={searchMode === "project" ? "Project a query..." : "Search and visualize..."}
             className="text-xs px-3 py-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-accent) w-48"
           />
           <button
             type="button"
-            onClick={handleProject}
+            onClick={handleSearch}
             disabled={projecting || !query.trim()}
             className="text-xs px-3 py-1.5 rounded-(--radius-sm) bg-(--color-accent) text-(--color-text-inverse) hover:bg-(--color-accent-hover) transition-colors disabled:opacity-40 cursor-pointer"
           >
-            {projecting ? "..." : "Project"}
+            {projecting ? "..." : searchMode === "project" ? "Project" : "Search"}
           </button>
         </div>
       </div>
@@ -545,6 +673,41 @@ export function Visualizer() {
         </div>
       </div>
 
+      {/* Search active bar */}
+      {(searchResults || projecting) && (
+        <div className="px-4 py-1.5 border-b border-[#00838f]/30 bg-[#00838f]/10 flex-shrink-0 flex items-center gap-3">
+          <span className="text-[11px] text-[#22d3ee] font-medium">
+            {projecting
+              ? "Searching..."
+              : `${searchResults?.results.length ?? 0} results for "${query}" (${searchMode})`}
+          </span>
+          {searchResults && (
+            <>
+              <button
+                type="button"
+                title={showAllPoints ? "Show only results" : "Show all points"}
+                onClick={() => setShowAllPoints((v) => !v)}
+                className={`text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer border ${
+                  showAllPoints
+                    ? "border-(--color-border) text-(--color-text-secondary) hover:text-(--color-text)"
+                    : "border-[#22d3ee]/50 text-[#22d3ee] bg-[#22d3ee]/10"
+                }`}
+              >
+                {showAllPoints ? "Results only" : "Show all"}
+              </button>
+              <div className="flex-1" />
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="text-[10px] text-(--color-text-tertiary) hover:text-(--color-text) cursor-pointer"
+              >
+                Clear search
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Main content */}
       <div className="flex flex-1 min-h-0">
         {/* 3D plot */}
@@ -570,9 +733,9 @@ export function Visualizer() {
                   : null
               }
               dimmedIds={dimmedIds}
+              highlightedIds={highlightedIds}
+              hideNonHighlighted={!showAllPoints}
               focusPoint={focusPoint}
-
-
             />
           )}
 
@@ -581,6 +744,8 @@ export function Visualizer() {
             <SongDetail
               point={selected}
               projection={projection}
+              searchResults={searchResults}
+              searchMode={searchMode}
               onSelectId={handleSelectById}
               onDismiss={handleDismiss}
             />

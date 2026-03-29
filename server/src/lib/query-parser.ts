@@ -5,7 +5,7 @@ import { extractDecades, extractArtist, extractGenres } from "./nlp-helpers";
 // Stop words — stripped from keyword terms (not from semanticText)
 // ---------------------------------------------------------------------------
 const STOP_WORDS = new Set([
-  "songs", "song", "with", "the", "a", "an", "and", "or", "that", "this",
+  "songs", "song", "with", "the", "a", "an", "and", "or", "in", "that", "this",
   "are", "is", "was", "were", "been", "be", "have", "has", "had", "do",
   "does", "did", "will", "would", "could", "should", "may", "might", "can",
   "shall", "about", "for", "on", "at", "to", "of", "it", "its", "they",
@@ -118,6 +118,7 @@ export function parseQuery(raw: string): ParsedQuery {
     searchPhrase: "",
     semanticText: "",
     terms: [],
+    termsUnfiltered: [],
     interpretations: [],
   };
 
@@ -186,8 +187,9 @@ export function parseQuery(raw: string): ParsedQuery {
     }
   }
 
-  // ── 6. Terms — for keyword matching (stop words removed) ──
+  // ── 6. Terms — for keyword matching ──
   const allWords = lower.split(/\s+/).filter(w => w.length > 1);
+  result.termsUnfiltered = allWords;
   const meaningful = allWords.filter(w => {
     const clean = w.replace(/[^a-z-]/g, "");
     return clean.length > 1 && !STOP_WORDS.has(clean);

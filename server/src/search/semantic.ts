@@ -3,6 +3,59 @@ import { embedQuery } from "../lib/embedder";
 import { payloadToSong } from "./utils";
 import type { ParsedQuery, SearchResult } from "../lib/types";
 
+// ---------------------------------------------------------------------------
+// Build Qdrant filter from parsed query filters
+// ---------------------------------------------------------------------------
+function buildQdrantFilter(parsed: ParsedQuery): Record<string, any> | undefined {
+  const { decades, genres, moods, artistHint } = parsed.filters;
+  const must: any[] = [];
+
+  // Decade filter — exact match on any of the specified decades
+  if (decades.length > 0) {
+    must.push({ key: "decade", match: { any: decades } });
+  }
+
+  // Genre filter — text-indexed, substring match via match.text
+  if (genres.length > 0) {
+    if (genres.length === 1) {
+      must.push({ key: "genre", match: { text: genres[0] } });
+    } else {
+      // OR across genres — song matches if genre contains any search term
+      must.push({
+        should: genres.map(g => ({ key: "genre", match: { text: g } })),
+      });
+    }
+  }
+
+  // Mood/emotion filter — range filter on emotion scores
+  for (const mood of moods) {
+    if (mood.min != null) {
+      must.push({ key: mood.key, range: { gte: mood.min } });
+    }
+  }
+
+  // Artist filter — text-indexed, match on artist name tokens
+  if (artistHint.length > 0) {
+    for (const token of artistHint) {
+      must.push({ key: "artist", match: { text: token } });
+    }
+  }
+
+  // Title scope — filter to songs where title contains query terms
+  if (parsed.scopeTitle && parsed.terms.length > 0) {
+    // Each meaningful term should appear in the title
+    for (const term of parsed.terms) {
+      must.push({ key: "title", match: { text: term } });
+    }
+  }
+
+  if (must.length === 0) return undefined;
+  return { must };
+}
+
+// ---------------------------------------------------------------------------
+// Semantic search
+// ---------------------------------------------------------------------------
 export async function semanticSearch(
   parsed: ParsedQuery,
   originalQuery: string,
@@ -10,8 +63,7 @@ export async function semanticSearch(
 ): Promise<{ results: SearchResult[]; totalFiltered: number; timing?: { embedMs: number; qdrantMs: number } }> {
   const client = getQdrantClient();
 
-  // No pre-filtering — let the vector do its job
-  const filter = undefined;
+  const filter = buildQdrantFilter(parsed);
 
   const queryText = originalQuery || parsed.semanticText;
 

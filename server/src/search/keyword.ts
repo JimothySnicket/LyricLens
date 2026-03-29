@@ -10,32 +10,59 @@ const ARTIST_HINT_BONUS = 10;
 
 const MAX_RESULTS = 30;
 
+/** Short queries keep stop words — "be my baby" must stay intact. */
+const SHORT_QUERY_THRESHOLD = 4;
+
 export function keywordSearch(
   songs: Song[],
   parsed: ParsedQuery,
 ): SearchResult[] {
   const { scopeTitle, scopeLyrics, scopeArtist, filters } = parsed;
   const { decades, genres, artistHint } = filters;
-  const queryWords = parsed.searchPhrase
-    ? parsed.searchPhrase.split(/\s+/)
-    : [];
 
-  if (queryWords.length === 0 && decades.length === 0 && genres.length === 0 && artistHint.length === 0) {
+  const stripped = parsed.terms;
+  const unfiltered = parsed.termsUnfiltered;
+
+  // Short queries: hard rule — never strip stop words
+  const isShort = unfiltered.length <= SHORT_QUERY_THRESHOLD;
+  // Primary words: unfiltered for short queries, stripped for long
+  const primary = isShort ? unfiltered : stripped;
+  // For long queries, we also test unfiltered and take the better score
+  const testBoth = !isShort && stripped.length > 0 && stripped.length !== unfiltered.length;
+
+  if (primary.length === 0 && decades.length === 0 && genres.length === 0 && artistHint.length === 0) {
     return [];
   }
 
   const results: SearchResult[] = [];
 
   for (const song of songs) {
-    // --- Sequence scoring ---
-    const titleMatch = longestSequence(queryWords, song.title);
-    const lyricsMatch = longestSequence(queryWords, song.lyrics);
-    const artistMatch = longestSequence(queryWords, song.artist);
+    // --- Score with primary terms ---
+    let titleMatch = longestSequence(primary, song.title);
+    let lyricsMatch = longestSequence(primary, song.lyrics);
+    let artistMatch = longestSequence(primary, song.artist);
 
     let score =
       (titleMatch.length ** 2) * TITLE_WEIGHT +
       (lyricsMatch.length ** 2) * LYRICS_WEIGHT +
       (artistMatch.length ** 2) * ARTIST_WEIGHT;
+
+    // --- For long queries, also try unfiltered and take the better score ---
+    if (testBoth) {
+      const altTitle = longestSequence(unfiltered, song.title);
+      const altLyrics = longestSequence(unfiltered, song.lyrics);
+      const altArtist = longestSequence(unfiltered, song.artist);
+      const altScore =
+        (altTitle.length ** 2) * TITLE_WEIGHT +
+        (altLyrics.length ** 2) * LYRICS_WEIGHT +
+        (altArtist.length ** 2) * ARTIST_WEIGHT;
+      if (altScore > score) {
+        score = altScore;
+        titleMatch = altTitle;
+        lyricsMatch = altLyrics;
+        artistMatch = altArtist;
+      }
+    }
 
     // --- Scope enforcement ---
     if (scopeTitle && titleMatch.length === 0) continue;

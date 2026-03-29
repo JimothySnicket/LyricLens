@@ -1,4 +1,4 @@
-export type SearchMode = "keyword" | "semantic" | "hybrid" | "natural";
+export type SearchMode = "keyword" | "semantic" | "hybrid" | "natural" | "deep";
 
 export interface Song {
   id: string;

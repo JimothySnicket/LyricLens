@@ -72,8 +72,13 @@ export function longestSequence(
   const lower = text.toLowerCase();
   for (let len = queryWords.length; len >= 1; len--) {
     for (let start = 0; start <= queryWords.length - len; start++) {
-      // Single stop words are noise — skip them
-      if (len === 1 && NOISE_WORDS.has(queryWords[start])) continue;
+      // Skip sequences where every word is noise — "in the" is worthless,
+      // but "be my baby" is fine because "baby" carries meaning
+      let allNoise = true;
+      for (let j = start; j < start + len; j++) {
+        if (!NOISE_WORDS.has(queryWords[j])) { allNoise = false; break; }
+      }
+      if (allNoise) continue;
       const phrase = queryWords.slice(start, start + len).join(" ");
       if (hasPhrase(lower, phrase)) {
         return { length: len, phrase };

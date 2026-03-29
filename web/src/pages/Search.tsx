@@ -1,38 +1,38 @@
 import { useState } from "react";
-import type { SearchMode, SearchResponse } from "../lib/types";
-import { searchAll } from "../lib/api";
+import type { SearchResponse } from "../lib/types";
+import { searchAll, type ComparisonMode } from "../lib/api";
 import { SearchBar } from "../components/SearchBar";
 import { QueryChips } from "../components/QueryChips";
 import { ResultCard } from "../components/ResultCard";
 
-const MODE_INFO: Record<SearchMode, { label: string; description: string; color: string }> = {
+const MODE_INFO: Record<ComparisonMode, { label: string; description: string; color: string }> = {
   keyword: {
     label: "Keyword",
-    description: "Regex parser + exact word matching",
+    description: "Phrase matching + sequence scoring",
     color: "var(--color-mode-keyword, #e65100)",
   },
   semantic: {
     label: "Semantic",
-    description: "Regex parser + vector similarity",
+    description: "Vector similarity + payload filters",
     color: "var(--color-mode-semantic, #1565c0)",
   },
   hybrid: {
     label: "Hybrid",
-    description: "Regex parser + filters + vector + keyword boost",
+    description: "Keyword + vector merged (40/60 blend)",
     color: "var(--color-mode-hybrid, #6a1b9a)",
   },
   natural: {
     label: "Natural Language",
-    description: "LLM parses query + vector similarity",
+    description: "LLM multi-query (3 strategies, best picked)",
     color: "var(--color-mode-natural, #2e7d32)",
   },
 };
 
-const MODES: SearchMode[] = ["keyword", "semantic", "hybrid", "natural"];
+const MODES: ComparisonMode[] = ["keyword", "semantic", "hybrid", "natural"];
 
 export function Search() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Record<SearchMode, SearchResponse> | null>(null);
+  const [results, setResults] = useState<Record<ComparisonMode, SearchResponse> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
@@ -202,7 +202,7 @@ function CompactResult({
   expanded,
   onToggle,
 }: {
-  result: { song: any; score: number; matchReason: string; mode: SearchMode };
+  result: { song: any; score: number; matchReason: string; mode: string };
   rank: number;
   modeColor: string;
   expanded: boolean;

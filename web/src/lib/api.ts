@@ -12,7 +12,10 @@ export async function search(query: string, mode: SearchMode): Promise<SearchRes
   return res.json();
 }
 
-export async function searchAll(query: string): Promise<Record<SearchMode, SearchResponse>> {
+/** The 4 core modes shown in the comparison UI (excludes "deep" which is on-demand) */
+export type ComparisonMode = "keyword" | "semantic" | "hybrid" | "natural";
+
+export async function searchAll(query: string): Promise<Record<ComparisonMode, SearchResponse>> {
   const [keyword, semantic, hybrid, natural] = await Promise.all([
     search(query, "keyword"),
     search(query, "semantic"),

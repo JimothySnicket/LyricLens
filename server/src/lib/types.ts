@@ -1,4 +1,4 @@
-export type SearchMode = "keyword" | "semantic" | "hybrid" | "natural";
+export type SearchMode = "keyword" | "semantic" | "hybrid" | "natural" | "deep";
 
 export interface Song {
   id: string;
@@ -44,6 +44,7 @@ export interface ParsedQuery {
   searchPhrase: string;
   semanticText: string;
   terms: string[];
+  termsUnfiltered: string[];
   interpretations: { type: string; label: string }[];
 }
 

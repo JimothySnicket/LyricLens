@@ -59,12 +59,12 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     id: "keyword",
     num: "01",
     label: "Keyword Search",
-    desc: "Regex + exact matching",
+    desc: "Phrase matching + scoring",
     cssVar: "--color-mode-keyword",
     fallbackColor: "#e65100",
 
     explanation:
-      "Traditional keyword search \u2014 a regex parser breaks your query into individual words and scans every song title, lyric, and artist name for exact matches.",
+      "Keyword search finds the longest matching phrase in every song title, lyric, and artist name. Longer sequences score exponentially higher \u2014 so an exact title match always beats scattered single words.",
     successQuery: "baby in the title from the 60s",
     stopWords: ["in", "the", "from", "the"],
     successTokens: ["baby", "title", "60s"],
@@ -106,14 +106,14 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     successCaption:
       "None contain the word \u2018heartbreak\u2019 \u2014 but they\u2019re all about it.",
 
-    limitationQuery: "baby in the title from the 60s",
+    limitationQuery: "dive bar at 2am",
     limitationResults: [
-      { title: "My Girl", artist: "The Temptations", year: 1964 },
-      { title: "Stand By Me", artist: "Ben E. King", year: 1961 },
-      { title: "Be My Baby", artist: "The Ronettes", year: 1963 },
+      { title: "American Woman", artist: "Guess Who", year: 1970 },
+      { title: "Just A Dream", artist: "Nelly", year: 2010 },
+      { title: "Best Of My Love", artist: "Eagles", year: 1975 },
     ],
     limitationCaption:
-      "\u2018In the title\u2019 and \u2018from the 60s\u2019 are facts, not feelings \u2014 vectors can\u2019t filter on them.",
+      "Vectors match lyrical themes, not atmosphere or setting \u2014 \u2018dive bar\u2019 is a scene, not a feeling in the lyrics.",
   },
 
   hybrid: {
@@ -157,12 +157,12 @@ export const animationContent: Record<string, ModeAnimationContent> = {
     id: "natural",
     num: "04",
     label: "Natural Language",
-    desc: "LLM + vectors",
+    desc: "LLM multi-query",
     cssVar: "--color-mode-natural",
     fallbackColor: "#2e7d32",
 
     explanation:
-      "Sometimes a query isn\u2019t keywords or filters \u2014 it\u2019s a scene. An LLM interprets scenarios that no parser or embedding can handle alone.",
+      "An LLM reads your query and generates three different search strategies \u2014 varying the mode, filters, and semantic text. All three run in parallel, and the LLM picks the best results.",
     successQuery: "dive bar at 2am",
     llmExpansion: ["drinking alone", "heartbreak", "regret", "loneliness", "whiskey", "neon lights", "last call"],
     successResults: [

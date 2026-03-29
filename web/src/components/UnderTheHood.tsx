@@ -42,12 +42,17 @@ function getPipelineSteps(response: SearchResponse): string[] {
   // Step 3: Mode-specific ranking
   if (mode === "keyword") {
     steps.push(
-      `Keyword ranking — scored ${totalFiltered} songs using TF-IDF term frequency against title, lyrics, and artist fields.`
+      `Keyword ranking — scored ${totalFiltered} songs using sequence matching (longest contiguous phrase match, scored n\u00B2 per field) against title, lyrics, and artist.`
     );
   } else if (mode === "semantic") {
     steps.push(
-      `Semantic ranking — embedded query using sentence-transformers, then computed cosine similarity against ${totalFiltered} pre-computed song vectors.`
+      `Semantic ranking — embedded query using nomic-embed-text-v1.5 (768D), then computed cosine similarity against both lyrics and summary vectors.`
     );
+    if (filterParts.length > 0) {
+      steps.push(
+        `Qdrant payload filters narrowed the vector search to matching songs before similarity ranking.`
+      );
+    }
     if (parsedQuery.semanticText) {
       steps.push(
         `Semantic text used for embedding: "${parsedQuery.semanticText}"`
@@ -55,11 +60,23 @@ function getPipelineSteps(response: SearchResponse): string[] {
     }
   } else if (mode === "hybrid") {
     steps.push(
-      `Hybrid ranking — applied keyword filters first (${totalFiltered} songs passed), then re-ranked using semantic similarity for final ordering.`
+      `Hybrid ranking — ran keyword and semantic searches independently, then merged results. Blended score: 40% keyword + 60% vector similarity.`
     );
     if (parsedQuery.semanticText) {
       steps.push(
-        `Semantic re-rank text: "${parsedQuery.semanticText}"`
+        `Semantic text: "${parsedQuery.semanticText}"`
+      );
+    }
+  } else if (mode === "natural" || mode === "deep") {
+    const isDeep = mode === "deep";
+    steps.push(
+      isDeep
+        ? `Deep search — LLM reasoned about query intent, generated 3 search strategies, ran all, then reviewed results to pick the best set.`
+        : `Natural language — LLM generated 3 different search strategies (varying mode, filters, and semantic text), ran all, then picked the best result set.`
+    );
+    if (parsedQuery.semanticText) {
+      steps.push(
+        `Semantic text: "${parsedQuery.semanticText}"`
       );
     }
   }
