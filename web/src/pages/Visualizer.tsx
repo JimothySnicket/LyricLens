@@ -518,6 +518,11 @@ export function Visualizer() {
     return ids.size > 0 ? ids : null;
   }, [searchResults, points]);
 
+  const neighborIds = useMemo(() => {
+    if (!selected?.neighbors?.length) return null;
+    return new Set(selected.neighbors.map((n) => n.id));
+  }, [selected]);
+
   async function handleSearch() {
     if (!query.trim() || projecting) return;
     setProjecting(true);
@@ -743,6 +748,7 @@ export function Visualizer() {
               highlightedIds={highlightedIds}
               hideNonHighlighted={!showAllPoints}
               focusPoint={focusPoint}
+              neighborIds={neighborIds}
             />
           )}
 

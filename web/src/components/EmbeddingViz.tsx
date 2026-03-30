@@ -18,6 +18,7 @@ interface Props {
   highlightedIds?: Set<string> | null;
   hideNonHighlighted?: boolean;
   focusPoint?: { x: number; y: number; z: number } | null;
+  neighborIds?: Set<string> | null;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -44,7 +45,7 @@ function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, highlightedIds, hideNonHighlighted, focusPoint }: Props) {
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, highlightedIds, hideNonHighlighted, focusPoint, neighborIds }: Props) {
   const plotRef = useRef<any>(null);
   const animRef = useRef<number>(0);
 
@@ -144,14 +145,18 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
   const { traces } = useMemo(() => {
     const hasDimming = dimmedIds != null && dimmedIds.size > 0;
     const hasHighlighting = highlightedIds != null && highlightedIds.size > 0;
+    const hasNeighbors = neighborIds != null && neighborIds.size > 0;
 
     const bright: VizPoint[] = [];
     const dimmed: VizPoint[] = [];
     const highlighted: VizPoint[] = [];
+    const neighbors: VizPoint[] = [];
 
     for (const p of points) {
       if (hasHighlighting && highlightedIds.has(p.id)) {
         highlighted.push(p);
+      } else if (hasNeighbors && neighborIds.has(p.id)) {
+        neighbors.push(p);
       } else if (hasDimming && dimmedIds.has(p.id)) {
         dimmed.push(p);
       } else if (hasHighlighting) {
@@ -211,6 +216,30 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
           size: 3,
           color: "#555555",
           opacity: 0.08,
+        },
+      } as Plotly.Data);
+    }
+
+    // Neighbor highlights — medium size, colored ring matching their emotion
+    if (neighbors.length > 0) {
+      traces.push({
+        type: "scatter3d" as const,
+        mode: "markers" as const,
+        name: "Neighbors",
+        x: neighbors.map((p) => p.x),
+        y: neighbors.map((p) => p.y),
+        z: neighbors.map((p) => p.z),
+        text: neighbors.map((p) => `${p.title} — ${p.artist} (neighbor)`),
+        customdata: neighbors.map((p) => p.id),
+        hovertemplate: "%{text}<extra>Neighbor</extra>",
+        marker: {
+          size: 7,
+          color: neighbors.map((p) => EMOTION_COLORS[p.dominantEmotion?.toLowerCase()] ?? "#888888"),
+          opacity: 0.95,
+          line: {
+            width: 1.5,
+            color: neighbors.map((p) => EMOTION_COLORS[p.dominantEmotion?.toLowerCase()] ?? "#888888"),
+          },
         },
       } as Plotly.Data);
     }
@@ -278,7 +307,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     }
 
     return { traces };
-  }, [points, dimmedIds, highlightedIds, hideNonHighlighted, selectedId, projectedPoint, selectedPoint]);
+  }, [points, dimmedIds, highlightedIds, hideNonHighlighted, selectedId, projectedPoint, selectedPoint, neighborIds]);
 
   const layout = useMemo(
     (): Partial<Plotly.Layout> => ({
