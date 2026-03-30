@@ -589,7 +589,7 @@ export function Visualizer() {
   }
 
   return (
-    <div className="flex flex-col h-screen pt-[64px]">
+    <div className="flex flex-col h-screen pt-[72px]">
       {/* Row 1: Lens selector + query */}
       <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto">
         <div className="flex items-center gap-3">
