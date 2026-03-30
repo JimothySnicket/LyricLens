@@ -438,15 +438,50 @@ export function Visualizer() {
   const [projection, setProjection] = useState<ProjectionResult | null>(null);
   const [searchMode, setSearchMode] = useState<ComparisonMode | "project">("project");
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
-  const [showAllPoints, setShowAllPoints] = useState(true); // false = only show search results
+  const [filterMode, setFilterMode] = useState<"show" | "hide">("show");
 
   const legendItems = useLegendItems(points, lens, genreDrillDown);
-  const dimmedIds = useDimmedIds(points, lens, activeFilter, genreDrillDown);
 
-  const filteredCount = useMemo(() => {
-    if (!activeFilter) return points.length;
-    return points.length - (dimmedIds?.size ?? 0);
-  }, [points, activeFilter, dimmedIds]);
+  // Single filter source: legend OR search results (last one set wins)
+  const filteredIds = useMemo(() => {
+    // Search results take priority if set
+    if (searchResults?.results?.length && points.length > 0) {
+      const searchKeys = new Set(
+        searchResults.results.map((r) => `${r.song.title}|||${r.song.artist}`.toLowerCase())
+      );
+      const ids = new Set<string>();
+      for (const p of points) {
+        if (searchKeys.has(`${p.title}|||${p.artist}`.toLowerCase())) {
+          ids.add(p.id);
+        }
+      }
+      return ids.size > 0 ? ids : null;
+    }
+
+    // Legend filter
+    if (!activeFilter) return null;
+    const ids = new Set<string>();
+    for (const p of points) {
+      let match = false;
+      if (lens === "genre") {
+        if (genreDrillDown && activeFilter === genreDrillDown) {
+          match = p.metaGenre === activeFilter;
+        } else if (genreDrillDown) {
+          match = p.genre === activeFilter;
+        } else {
+          match = p.metaGenre === activeFilter;
+        }
+      } else if (lens === "decade") {
+        match = String(p.decade) === activeFilter;
+      } else {
+        match = String(p.cluster) === activeFilter;
+      }
+      if (match) ids.add(p.id);
+    }
+    return ids.size > 0 ? ids : null;
+  }, [points, searchResults, activeFilter, lens, genreDrillDown]);
+
+  const filteredCount = filteredIds?.size ?? points.length;
 
   useEffect(() => {
     getVizData()
@@ -464,9 +499,12 @@ export function Visualizer() {
   }
 
   function handleLegendItemClick(key: string) {
+    // Legend click clears search
+    setSearchResults(null);
+    setProjection(null);
     if (lens === "genre" && !genreDrillDown) {
       setGenreDrillDown(key);
-      setActiveFilter(key); // filter to meta-genre immediately
+      setActiveFilter(key);
       return;
     }
     setActiveFilter((prev) => (prev === key ? null : key));
@@ -478,11 +516,11 @@ export function Visualizer() {
   }
 
   function handleSelect(point: VizPoint) {
-    // If navigating to a node outside the current search results, clear the
-    // search highlighting so it doesn't fight with neighbor highlighting
-    if (highlightedIds && !highlightedIds.has(point.id)) {
+    // If navigating to a node outside the current filter, clear it
+    if (filteredIds && !filteredIds.has(point.id)) {
       setSearchResults(null);
       setProjection(null);
+      setActiveFilter(null);
     }
     setSelected(point);
     setFocusPoint({ x: point.x, y: point.y, z: point.z });
@@ -508,22 +546,6 @@ export function Visualizer() {
     setFocusPoint(null);
   }
 
-  // IDs of all search results — highlighted in the 3D cloud
-  // Search uses numeric Qdrant IDs, viz uses slug IDs — match by title+artist
-  const highlightedIds = useMemo(() => {
-    if (!searchResults?.results?.length || points.length === 0) return null;
-    const searchKeys = new Set(
-      searchResults.results.map((r) => `${r.song.title}|||${r.song.artist}`.toLowerCase())
-    );
-    const ids = new Set<string>();
-    for (const p of points) {
-      if (searchKeys.has(`${p.title}|||${p.artist}`.toLowerCase())) {
-        ids.add(p.id);
-      }
-    }
-    return ids.size > 0 ? ids : null;
-  }, [searchResults, points]);
-
   const neighborIds = useMemo(() => {
     if (!selected?.neighbors?.length) return null;
     return new Set(selected.neighbors.map((n) => n.id));
@@ -533,6 +555,7 @@ export function Visualizer() {
     if (!query.trim() || projecting) return;
     setProjecting(true);
     setSelected(null);
+    setActiveFilter(null);
     setSearchResults(null);
     setProjection(null);
 
@@ -703,15 +726,15 @@ export function Visualizer() {
             <>
               <button
                 type="button"
-                title={showAllPoints ? "Show only results" : "Show all points"}
-                onClick={() => setShowAllPoints((v) => !v)}
+                title={filterMode === "show" ? "Show only results" : "Show all points"}
+                onClick={() => setFilterMode((v) => v === "show" ? "hide" : "show")}
                 className={`text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer border ${
-                  showAllPoints
+                  filterMode === "show"
                     ? "border-(--color-border) text-(--color-text-secondary) hover:text-(--color-text)"
                     : "border-[#22d3ee]/50 text-[#22d3ee] bg-[#22d3ee]/10"
                 }`}
               >
-                {showAllPoints ? "Results only" : "Show all"}
+                {filterMode === "show" ? "Results only" : "Show all"}
               </button>
               <div className="flex-1" />
               <button
@@ -757,9 +780,8 @@ export function Visualizer() {
                   ? { x: projection.x, y: projection.y, z: projection.z, label: projection.query }
                   : null
               }
-              dimmedIds={dimmedIds}
-              highlightedIds={highlightedIds}
-              hideNonHighlighted={!showAllPoints}
+              filteredIds={filteredIds}
+              filterMode={filterMode}
               focusPoint={focusPoint}
               neighborIds={neighborIds}
             />
