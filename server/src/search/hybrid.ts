@@ -1,5 +1,6 @@
 import { keywordSearch } from "./keyword";
 import { semanticSearch } from "./semantic";
+import { songKey } from "./utils";
 import type { Song, ParsedQuery, SearchResult } from "../lib/types";
 
 const BASE_KEYWORD_WEIGHT = 0.4;
@@ -10,20 +11,32 @@ const BASE_KEYWORD_WEIGHT = 0.4;
 // A strong keyword match (3+ word title) = 9 * 2 = 18+.
 const KEYWORD_CONFIDENCE_THRESHOLD = 8;
 
-export async function hybridSearch(
-  parsed: ParsedQuery,
-  originalQuery: string,
-  songs: Song[],
+// Title-match bonus: keyword results that matched in the song title get a
+// score boost so they can break through the semantic ceiling (0.40 max for
+// keyword-only songs). Scaled by match length so exact titles rank highest.
+const TITLE_BONUS_PER_WORD = 0.10; // 1w → +0.10, 2w → +0.20
+const TITLE_BONUS_CAP = 0.30;      // 3+ words capped
+const ARTIST_MATCH_BONUS = 0.15;
+
+function titleMatchWords(matchReason: string): number {
+  const m = matchReason.match(/title:.*?\((\d+)w\)/);
+  return m ? parseInt(m[1]) : 0;
+}
+
+function hasArtistMatch(matchReason: string): boolean {
+  return /artist:/.test(matchReason);
+}
+
+/**
+ * Pure merge step: union keyword and vector results by title+artist key,
+ * blend scores, apply bonuses, and return ranked SearchResults.
+ * Exported for unit testing.
+ */
+export function mergeHybridResults(
+  keywordResults: SearchResult[],
+  vectorResults: SearchResult[],
   limit = 20,
-): Promise<{ results: SearchResult[]; totalFiltered: number }> {
-  // --- Leg 1: Keyword search (sequence scoring) ---
-  const keywordResults = keywordSearch(songs, parsed);
-
-  // --- Leg 2: Semantic search (both lyrics + summary vectors) ---
-  const semanticResult = await semanticSearch(parsed, originalQuery, 50);
-  const vectorResults = semanticResult.results;
-
-  // --- Merge: union by song ID ---
+): SearchResult[] {
   const merged = new Map<string, {
     song: Song;
     keywordScore: number;
@@ -32,19 +45,13 @@ export async function hybridSearch(
     vectorReason: string;
   }>();
 
-  // Normalize keyword scores to 0–1 range
-  const maxKeyword = keywordResults.length > 0
-    ? keywordResults[0].score
-    : 1;
-
-  // When keyword matches are weak, reduce keyword's weight in the blend
-  // so noise like "bar" in lyrics doesn't drown out semantic matches
+  const maxKeyword = keywordResults.length > 0 ? keywordResults[0].score : 1;
   const keywordConfidence = maxKeyword >= KEYWORD_CONFIDENCE_THRESHOLD ? 1.0 : maxKeyword / KEYWORD_CONFIDENCE_THRESHOLD;
   const kwWeight = BASE_KEYWORD_WEIGHT * keywordConfidence;
-  const vecWeight = 1 - kwWeight; // semantic gets the remainder
+  const vecWeight = 1 - kwWeight;
 
   for (const kr of keywordResults) {
-    merged.set(kr.song.id, {
+    merged.set(songKey(kr.song.title, kr.song.artist), {
       song: kr.song,
       keywordScore: kr.score / maxKeyword,
       vectorScore: 0,
@@ -54,12 +61,13 @@ export async function hybridSearch(
   }
 
   for (const vr of vectorResults) {
-    const existing = merged.get(vr.song.id);
+    const key = songKey(vr.song.title, vr.song.artist);
+    const existing = merged.get(key);
     if (existing) {
       existing.vectorScore = vr.score;
       existing.vectorReason = vr.matchReason;
     } else {
-      merged.set(vr.song.id, {
+      merged.set(key, {
         song: vr.song,
         keywordScore: 0,
         vectorScore: vr.score,
@@ -69,13 +77,24 @@ export async function hybridSearch(
     }
   }
 
-  // --- Score and rank ---
   const results: SearchResult[] = [];
 
   for (const entry of merged.values()) {
+    let bonus = 0;
+    if (entry.keywordScore > 0) {
+      const titleWords = titleMatchWords(entry.keywordReason);
+      if (titleWords > 0) {
+        bonus += Math.min(titleWords * TITLE_BONUS_PER_WORD, TITLE_BONUS_CAP);
+      }
+      if (hasArtistMatch(entry.keywordReason)) {
+        bonus += ARTIST_MATCH_BONUS;
+      }
+    }
+
     const blended =
       entry.keywordScore * kwWeight +
-      entry.vectorScore * vecWeight;
+      entry.vectorScore * vecWeight +
+      bonus;
 
     const reasons: string[] = [];
     if (entry.keywordScore > 0) reasons.push(entry.keywordReason);
@@ -90,9 +109,24 @@ export async function hybridSearch(
   }
 
   results.sort((a, b) => b.score - a.score);
+  return results.slice(0, limit);
+}
+
+export async function hybridSearch(
+  parsed: ParsedQuery,
+  originalQuery: string,
+  songs: Song[],
+  limit = 20,
+): Promise<{ results: SearchResult[]; totalFiltered: number }> {
+  // --- Leg 1: Keyword search (sequence scoring) ---
+  const keywordResults = keywordSearch(songs, parsed);
+
+  // --- Leg 2: Semantic search (both lyrics + summary vectors) ---
+  const semanticResult = await semanticSearch(parsed, originalQuery, 50);
+  const vectorResults = semanticResult.results;
 
   return {
-    results: results.slice(0, limit),
+    results: mergeHybridResults(keywordResults, vectorResults, limit),
     totalFiltered: songs.length,
   };
 }
