@@ -415,6 +415,26 @@ function SearchSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Score Breakdown
+// ---------------------------------------------------------------------------
+function ScoreBreakdown({ breakdown }: { breakdown?: { label: string; detail?: string; value: string }[] }) {
+  if (!breakdown?.length) return null;
+  return (
+    <div className="space-y-0.5">
+      {breakdown.map((c, i) => (
+        <div key={i} className="flex items-baseline gap-2 text-[11px]">
+          <span className="text-(--color-text-tertiary) shrink-0">{c.label}</span>
+          {c.detail && (
+            <span className="text-(--color-text-tertiary)/60 truncate text-[10px]">{c.detail}</span>
+          )}
+          <span className="ml-auto text-(--color-text-secondary) tabular-nums shrink-0">{c.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Result Row
 // ---------------------------------------------------------------------------
 function ResultRow({
@@ -426,7 +446,7 @@ function ResultRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const { song, score, matchReason, mode } = result;
+  const { song, score, scoreBreakdown, mode } = result;
   const sc = mode === "keyword" ? score.toFixed(1) : score.toFixed(3);
 
   return (
@@ -456,12 +476,9 @@ function ResultRow({
           transition={{ duration: 0.2 }}
           className="px-3 pb-3 text-xs space-y-1.5 border-t border-(--color-border) overflow-hidden"
         >
-          <p className="text-(--color-text-tertiary) pt-2">{matchReason}</p>
-          {song.lyrics && (
-            <p className="text-(--color-text-secondary) leading-relaxed whitespace-pre-line line-clamp-3">
-              {song.lyrics.slice(0, 250)}
-            </p>
-          )}
+          <div className="pt-2">
+            <ScoreBreakdown breakdown={scoreBreakdown} />
+          </div>
         </motion.div>
       )}
     </div>

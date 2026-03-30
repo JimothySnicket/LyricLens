@@ -195,6 +195,23 @@ export function Search() {
   );
 }
 
+function ScoreBreakdown({ breakdown }: { breakdown?: { label: string; detail?: string; value: string }[] }) {
+  if (!breakdown?.length) return null;
+  return (
+    <div className="space-y-0.5">
+      {breakdown.map((c, i) => (
+        <div key={i} className="flex items-baseline gap-2 text-[11px]">
+          <span className="text-(--color-text-tertiary) shrink-0">{c.label}</span>
+          {c.detail && (
+            <span className="text-(--color-text-tertiary)/60 truncate text-[10px]">{c.detail}</span>
+          )}
+          <span className="ml-auto text-(--color-text-secondary) tabular-nums shrink-0">{c.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CompactResult({
   result,
   rank,
@@ -202,13 +219,13 @@ function CompactResult({
   expanded,
   onToggle,
 }: {
-  result: { song: any; score: number; matchReason: string; mode: string };
+  result: { song: any; score: number; matchReason: string; scoreBreakdown?: { label: string; detail?: string; value: string }[]; mode: string };
   rank: number;
   modeColor: string;
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const { song, score, matchReason, mode } = result;
+  const { song, score, scoreBreakdown, mode } = result;
   const scoreDisplay = mode === "keyword" ? score.toFixed(1) : score.toFixed(3);
 
   return (
@@ -254,12 +271,7 @@ function CompactResult({
 
       {expanded && (
         <div className="px-3 pb-3 pt-1 border-t border-(--color-border) text-xs space-y-2">
-          <p className="text-(--color-text-tertiary)">{matchReason}</p>
-          {song.lyrics && (
-            <p className="text-(--color-text-secondary) leading-relaxed whitespace-pre-line line-clamp-4">
-              {song.lyrics.slice(0, 300)}
-            </p>
-          )}
+          <ScoreBreakdown breakdown={scoreBreakdown} />
           {song.album && (
             <p className="text-(--color-text-tertiary)">Album: {song.album}</p>
           )}
