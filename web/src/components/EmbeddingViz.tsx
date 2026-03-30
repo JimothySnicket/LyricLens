@@ -14,11 +14,10 @@ interface Props {
   onSelect: (point: VizPoint) => void;
   selectedId?: string;
   projectedPoint?: { x: number; y: number; z: number; label: string } | null;
-  dimmedIds?: Set<string> | null;
-  highlightedIds?: Set<string> | null;
-  hideNonHighlighted?: boolean;
-  focusPoint?: { x: number; y: number; z: number } | null;
+  filteredIds?: Set<string> | null;
+  filterMode?: "show" | "hide";
   neighborIds?: Set<string> | null;
+  focusPoint?: { x: number; y: number; z: number } | null;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -45,7 +44,7 @@ function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dimmedIds, highlightedIds, hideNonHighlighted, focusPoint, neighborIds }: Props) {
+export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, filteredIds, filterMode = "show", neighborIds, focusPoint }: Props) {
   const plotRef = useRef<any>(null);
   const animRef = useRef<number>(0);
 
@@ -143,28 +142,28 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
   }, [focusPoint, dataExtents]);
 
   const { traces } = useMemo(() => {
-    const hasDimming = dimmedIds != null && dimmedIds.size > 0;
-    const hasHighlighting = highlightedIds != null && highlightedIds.size > 0;
+    const hasFilter = filteredIds != null && filteredIds.size > 0;
     const hasNeighbors = neighborIds != null && neighborIds.size > 0;
 
     const bright: VizPoint[] = [];
     const dimmed: VizPoint[] = [];
-    const highlighted: VizPoint[] = [];
     const neighbors: VizPoint[] = [];
 
     for (const p of points) {
-      if (hasHighlighting && highlightedIds.has(p.id)) {
-        highlighted.push(p);
-      } else if (hasNeighbors && neighborIds.has(p.id)) {
+      // Neighbors always visible regardless of filter
+      if (hasNeighbors && neighborIds.has(p.id)) {
         neighbors.push(p);
-      } else if (hasDimming && dimmedIds.has(p.id)) {
-        dimmed.push(p);
-      } else if (hasHighlighting) {
-        // When highlighting search results, dim or hide everything else
-        if (!hideNonHighlighted) dimmed.push(p);
-      } else {
+      } else if (!hasFilter) {
+        // No filter — everything bright
         bright.push(p);
+      } else if (filteredIds.has(p.id)) {
+        // Matches filter — bright
+        bright.push(p);
+      } else if (filterMode === "show") {
+        // Doesn't match but "show all" — dimmed
+        dimmed.push(p);
       }
+      // filterMode === "hide" and doesn't match — skip (not rendered)
     }
 
     // Group bright points by dominant emotion
@@ -244,27 +243,6 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
       } as Plotly.Data);
     }
 
-    // Search result highlights — larger, brighter points with white ring
-    if (highlighted.length > 0) {
-      traces.push({
-        type: "scatter3d" as const,
-        mode: "markers" as const,
-        name: "Search Results",
-        x: highlighted.map((p) => p.x),
-        y: highlighted.map((p) => p.y),
-        z: highlighted.map((p) => p.z),
-        text: highlighted.map((p) => `${p.title} — ${p.artist} (${p.year})`),
-        customdata: highlighted.map((p) => p.id),
-        hovertemplate: "%{text}<extra>Search Result</extra>",
-        marker: {
-          size: 8,
-          color: highlighted.map((p) => EMOTION_COLORS[p.dominantEmotion?.toLowerCase()] ?? "#888888"),
-          opacity: 1,
-          line: { width: 1.5, color: "#ffffff" },
-        },
-      } as Plotly.Data);
-    }
-
     if (projectedPoint) {
       traces.push({
         type: "scatter3d" as const,
@@ -307,7 +285,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, dim
     }
 
     return { traces };
-  }, [points, dimmedIds, highlightedIds, hideNonHighlighted, selectedId, projectedPoint, selectedPoint, neighborIds]);
+  }, [points, filteredIds, filterMode, selectedId, projectedPoint, selectedPoint, neighborIds]);
 
   const layout = useMemo(
     (): Partial<Plotly.Layout> => ({
