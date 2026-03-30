@@ -35,9 +35,9 @@ export function Nav({ visible = true, onNavigate }: NavProps) {
       initial={{ opacity: isHome ? 0 : 1, y: isHome ? -20 : 0 }}
       animate={{ opacity: 1, y: visible ? 0 : -60 }}
       transition={{ duration: isHome ? 0.3 : 0 }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-(--color-border) bg-(--color-bg)/95 backdrop-blur-sm"
+      className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-(--color-border) bg-(--color-bg)/95 backdrop-blur-sm overflow-hidden"
     >
-      <nav className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+      <nav className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Logo */}
         <button
           type="button"
