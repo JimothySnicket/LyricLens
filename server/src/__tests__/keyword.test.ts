@@ -183,4 +183,56 @@ describe("keywordSearch — sequence scoring", () => {
     expect(results.length).toBe(1);
     expect(results[0].song.id).toBe("title-hit");
   });
+
+  test("testBoth: 2-word unfiltered match does not beat stripped score (noise floor)", () => {
+    // Simulates "baby in the title from the 60s" — parser strips to ["baby"],
+    // unfiltered includes structural words. A song with "baby in" in lyrics
+    // should NOT outscore a 1960s song with "baby" in the title.
+    const songs = [
+      makeSong({
+        id: "noise-hit",
+        title: "Baby Don't Forget My Number",
+        lyrics: "oh baby in the morning light",
+        decade: 1980,
+      }),
+      makeSong({
+        id: "genuine-hit",
+        title: "Hey! Baby",
+        lyrics: "hey baby",
+        decade: 1960,
+      }),
+    ];
+    const parsed = makeParsed({
+      searchPhrase: "baby in the title from the 60s",
+      terms: ["baby"],
+      termsUnfiltered: ["baby", "in", "the", "title", "from", "the", "60s"],
+      scopeTitle: true,
+      filters: { decades: [1960], genres: [], moods: [], audioFeatures: [], artistHint: [] },
+    });
+    const results = keywordSearch(songs, parsed);
+    // The 1960s song should rank first because:
+    // - Both have "baby" in title (equal)
+    // - Genuine hit gets +2 decade bonus
+    // - Noise hit should NOT get inflated score from "baby in" unfiltered match
+    expect(results[0].song.id).toBe("genuine-hit");
+  });
+
+  test("testBoth: 5+ word unfiltered sequence DOES beat stripped score", () => {
+    const songs = [
+      makeSong({
+        id: "long-match",
+        title: "Some Song",
+        lyrics: "baby in the title from the sky we fell down together",
+      }),
+    ];
+    const parsed = makeParsed({
+      searchPhrase: "baby in the title from the sky",
+      terms: ["baby", "sky"],
+      termsUnfiltered: ["baby", "in", "the", "title", "from", "the", "sky"],
+    });
+    const results = keywordSearch(songs, parsed);
+    // 7-word unfiltered lyrics match should score very high (7²×1.5 = 73.5)
+    // vs stripped score of 2 words max
+    expect(results[0].score).toBeGreaterThan(20);
+  });
 });

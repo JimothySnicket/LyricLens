@@ -13,6 +13,11 @@ const MAX_RESULTS = 30;
 /** Short queries keep stop words — "be my baby" must stay intact. */
 const SHORT_QUERY_THRESHOLD = 4;
 
+/** Minimum sequence length for unfiltered path to beat stripped path.
+ *  Prevents structural query words (e.g. "in the title from the 60s")
+ *  from creating false sequence matches in lyrics. */
+const UNFILTERED_MIN_SEQUENCE = 5;
+
 export function keywordSearch(
   songs: Song[],
   parsed: ParsedQuery,
@@ -48,19 +53,24 @@ export function keywordSearch(
       (artistMatch.length ** 2) * ARTIST_WEIGHT;
 
     // --- For long queries, also try unfiltered and take the better score ---
+    // Only accept the unfiltered result if its best sequence is >= UNFILTERED_MIN_SEQUENCE
+    // words. Short matches like "baby in" from structural query syntax are noise.
     if (testBoth) {
       const altTitle = longestSequence(unfiltered, song.title);
       const altLyrics = longestSequence(unfiltered, song.lyrics);
       const altArtist = longestSequence(unfiltered, song.artist);
-      const altScore =
-        (altTitle.length ** 2) * TITLE_WEIGHT +
-        (altLyrics.length ** 2) * LYRICS_WEIGHT +
-        (altArtist.length ** 2) * ARTIST_WEIGHT;
-      if (altScore > score) {
-        score = altScore;
-        titleMatch = altTitle;
-        lyricsMatch = altLyrics;
-        artistMatch = altArtist;
+      const bestAltLen = Math.max(altTitle.length, altLyrics.length, altArtist.length);
+      if (bestAltLen >= UNFILTERED_MIN_SEQUENCE) {
+        const altScore =
+          (altTitle.length ** 2) * TITLE_WEIGHT +
+          (altLyrics.length ** 2) * LYRICS_WEIGHT +
+          (altArtist.length ** 2) * ARTIST_WEIGHT;
+        if (altScore > score) {
+          score = altScore;
+          titleMatch = altTitle;
+          lyricsMatch = altLyrics;
+          artistMatch = altArtist;
+        }
       }
     }
 
