@@ -12,12 +12,13 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import os
 import requests
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_FILE = REPO_ROOT / "data" / "processed" / "merged_songs.json"
 
-API_KEY = "sk-aba54643a6ca417899a7d32701ebfaa5"
+API_KEY = os.environ["DEEPSEEK_API_KEY"]
 API_URL = "https://api.deepseek.com/chat/completions"
 WORKERS = 20
 SAVE_EVERY = 50

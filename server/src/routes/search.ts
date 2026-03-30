@@ -5,6 +5,7 @@ import { getSongs } from "../lib/data";
 import { keywordSearch } from "../search/keyword";
 import { semanticSearch } from "../search/semantic";
 import { hybridSearch } from "../search/hybrid";
+import { songKey } from "../search/utils";
 import type { SearchMode, SearchResponse, SearchResult, ParsedQuery, Song } from "../lib/types";
 
 // ---------------------------------------------------------------------------
@@ -114,10 +115,11 @@ async function executeSearchConfig(
       const kw = keywordSearch(songs, parsed);
       const sem = await semanticSearch(parsed, parsed.semanticText);
       const merged = new Map<string, SearchResult>();
-      for (const r of kw) merged.set(r.song.id, r);
+      for (const r of kw) merged.set(songKey(r.song.title, r.song.artist), r);
       for (const r of sem.results) {
-        const e = merged.get(r.song.id);
-        if (!e || r.score > e.score) merged.set(r.song.id, r);
+        const key = songKey(r.song.title, r.song.artist);
+        const e = merged.get(key);
+        if (!e || r.score > e.score) merged.set(key, r);
       }
       return [...merged.values()].sort((a, b) => b.score - a.score).slice(0, 20);
     }

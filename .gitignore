@@ -9,5 +9,13 @@ pipeline/.venv/
 .firecrawl/
 nul
 server/src/eval/results/
-.playwright-mcp/
 docs/a11y/
+
+# Tool/editor artifacts
+.superpowers/
+.playwright-mcp/
+excalidraw.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
