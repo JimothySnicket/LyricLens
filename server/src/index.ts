@@ -2,6 +2,7 @@ import { resolve } from "path";
 import { readFileSync, existsSync } from "fs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { serveStatic } from "hono/bun";
 import { searchRoutes } from "./routes/search";
 import { filterRoutes } from "./routes/filters";
 import { statsRoutes } from "./routes/stats";
@@ -26,8 +27,9 @@ if (existsSync(envPath)) {
 const app = new Hono();
 
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5200";
-app.use("/*", cors({ origin: corsOrigin }));
+app.use("/api/*", cors({ origin: corsOrigin }));
 
+// API routes
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 app.route("/api/search", searchRoutes);
 app.route("/api/filters", filterRoutes);
@@ -35,7 +37,14 @@ app.route("/api/stats", statsRoutes);
 app.route("/api/viz", vizRoutes);
 app.route("/api/rag", ragRoutes);
 
-const port = 5201;
+// Static file serving (production — serves built frontend)
+const staticRoot = resolve(import.meta.dir, "../../web/dist");
+if (existsSync(staticRoot)) {
+  app.use("/*", serveStatic({ root: staticRoot }));
+  app.get("/*", serveStatic({ path: resolve(staticRoot, "index.html") }));
+}
+
+const port = parseInt(process.env.PORT || "5201", 10);
 console.log(`LyricLens API listening on port ${port}`);
 
 export default {

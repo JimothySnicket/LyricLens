@@ -130,7 +130,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, fil
       Plotly.relayout(el, {
         "scene.camera.center": center,
         "scene.camera.eye": eye,
-      });
+      } as unknown as Partial<Plotly.Layout>);
 
       if (t < 1) {
         animRef.current = requestAnimationFrame(step);
@@ -224,7 +224,7 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, fil
     if (projectedPoint) {
       traces.push({
         type: "scatter3d" as const,
-        mode: "markers+text" as const,
+        mode: "markers+text" as unknown as Plotly.PlotData["mode"],
         name: "Query",
         x: [projectedPoint.x],
         y: [projectedPoint.y],
