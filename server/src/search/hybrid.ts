@@ -1,7 +1,7 @@
 import { keywordSearch } from "./keyword";
 import { semanticSearch } from "./semantic";
 import { songKey } from "./utils";
-import type { Song, ParsedQuery, SearchResult } from "../lib/types";
+import type { Song, ParsedQuery, SearchResult, ScoreComponent } from "../lib/types";
 
 const BASE_KEYWORD_WEIGHT = 0.4;
 
@@ -100,10 +100,29 @@ export function mergeHybridResults(
     if (entry.keywordScore > 0) reasons.push(entry.keywordReason);
     if (entry.vectorScore > 0) reasons.push(entry.vectorReason);
 
+    const breakdown: ScoreComponent[] = [];
+    if (entry.keywordScore > 0) {
+      breakdown.push({ label: "Keyword score", detail: "normalized", value: entry.keywordScore.toFixed(2) });
+    }
+    if (entry.vectorScore > 0) {
+      breakdown.push({ label: "Vector score", detail: "similarity", value: entry.vectorScore.toFixed(3) });
+    }
+    breakdown.push({ label: "Keyword weight", value: `${(kwWeight * 100).toFixed(0)}%` });
+    breakdown.push({ label: "Vector weight", value: `${(vecWeight * 100).toFixed(0)}%` });
+    if (bonus > 0) {
+      const bonusParts: string[] = [];
+      const titleWords = titleMatchWords(entry.keywordReason);
+      if (titleWords > 0) bonusParts.push(`title (${titleWords}w)`);
+      if (hasArtistMatch(entry.keywordReason)) bonusParts.push("artist");
+      breakdown.push({ label: "Bonus", detail: bonusParts.join(" + "), value: `+${bonus.toFixed(2)}` });
+    }
+    breakdown.push({ label: "Blended total", value: blended.toFixed(3) });
+
     results.push({
       song: entry.song,
       score: blended,
       matchReason: reasons.join(" · ") || "hybrid match",
+      scoreBreakdown: breakdown,
       mode: "hybrid",
     });
   }

@@ -21,6 +21,7 @@ const makeResult = (song: Song, score: number, mode: "keyword" | "semantic", rea
   song,
   score,
   matchReason: reason,
+  scoreBreakdown: [],
   mode,
 });
 
