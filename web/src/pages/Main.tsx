@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, useInView } from "motion/react";
 import type { SearchResponse } from "../lib/types";
 import { search, type ComparisonMode } from "../lib/api";
@@ -504,6 +504,20 @@ export function Main() {
 
   const skipToSearch = useCallback(() => scrollToSection(5), [scrollToSection]);
   const navVisible = activeIndex === 0 || activeIndex >= 5;
+
+  // Handle hash navigation from other pages (e.g. /#keyword)
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const HASH_TO_INDEX: Record<string, number> = {
+      intro: 0, keyword: 1, semantic: 2, hybrid: 3, nl: 4, search: 5,
+    };
+    const index = HASH_TO_INDEX[hash];
+    if (index != null) {
+      setTimeout(() => scrollToSection(index), 100);
+      window.history.replaceState(null, "", "/");
+    }
+  }, [scrollToSection]);
 
   return (
     <>

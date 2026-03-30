@@ -3,11 +3,11 @@ import { useNavigate, useLocation } from "react-router";
 import { useTheme } from "../theme/ThemeProvider";
 
 const SECTION_LINKS = [
-  { label: "Intro", index: 0 },
-  { label: "Keyword", index: 1 },
-  { label: "Semantic", index: 2 },
-  { label: "Hybrid", index: 3 },
-  { label: "NL", index: 4 },
+  { label: "Intro", hash: "intro" },
+  { label: "Keyword", hash: "keyword" },
+  { label: "Semantic", hash: "semantic" },
+  { label: "Hybrid", hash: "hybrid" },
+  { label: "NL", hash: "nl" },
 ];
 
 interface NavProps {
@@ -22,11 +22,11 @@ export function Nav({ visible = true, onNavigate }: NavProps) {
 
   const isHome = pathname === "/";
 
-  function handleNav(index: number) {
-    if (onNavigate) {
+  function handleSectionClick(index: number, hash: string) {
+    if (isHome && onNavigate) {
       onNavigate(index);
     } else {
-      navigate("/");
+      navigate(`/#${hash}`);
     }
   }
 
@@ -41,20 +41,20 @@ export function Nav({ visible = true, onNavigate }: NavProps) {
         {/* Logo */}
         <button
           type="button"
-          onClick={() => handleNav(0)}
+          onClick={() => handleSectionClick(0, "intro")}
           className="text-base font-semibold text-(--color-text) bg-transparent border-none cursor-pointer"
           style={{ fontFamily: "inherit" }}
         >
           Lyric<span className="text-(--color-text-secondary)">Lens</span>
         </button>
 
-        {/* Section links */}
+        {/* Section links + page links */}
         <div className="flex items-center gap-6">
-          {isHome && SECTION_LINKS.map((link) => (
+          {SECTION_LINKS.map((link, i) => (
             <button
               key={link.label}
               type="button"
-              onClick={() => handleNav(link.index)}
+              onClick={() => handleSectionClick(i, link.hash)}
               className="text-xs text-(--color-text-tertiary) hover:text-(--color-text-secondary) transition-colors bg-transparent border-none cursor-pointer"
               style={{ fontFamily: "inherit" }}
             >
