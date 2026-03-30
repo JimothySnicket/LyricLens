@@ -478,6 +478,12 @@ export function Visualizer() {
   }
 
   function handleSelect(point: VizPoint) {
+    // If navigating to a node outside the current search results, clear the
+    // search highlighting so it doesn't fight with neighbor highlighting
+    if (highlightedIds && !highlightedIds.has(point.id)) {
+      setSearchResults(null);
+      setProjection(null);
+    }
     setSelected(point);
     setFocusPoint({ x: point.x, y: point.y, z: point.z });
   }
@@ -732,6 +738,13 @@ export function Visualizer() {
           {error && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-sm text-(--color-warning) bg-(--color-warning-bg) px-4 py-3 rounded-(--radius-md)">{error}</div>
+            </div>
+          )}
+          {projecting && (
+            <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+              <div className="text-sm text-(--color-text-secondary) bg-(--color-surface)/90 backdrop-blur-sm px-4 py-2 rounded-(--radius-md)">
+                Searching...
+              </div>
             </div>
           )}
           {!loading && !error && points.length > 0 && (
