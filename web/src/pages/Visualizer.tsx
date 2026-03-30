@@ -621,11 +621,11 @@ export function Visualizer() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-0.5 bg-(--color-bg-secondary) rounded-(--radius-sm) p-0.5">
             {([
-              { value: "project", label: "Project" },
-              { value: "keyword", label: "KW" },
-              { value: "semantic", label: "Sem" },
-              { value: "hybrid", label: "Hyb" },
-              { value: "natural", label: "NL" },
+              { value: "project", label: "Embed Query" },
+              { value: "keyword", label: "Keyword" },
+              { value: "semantic", label: "Semantic" },
+              { value: "hybrid", label: "Hybrid" },
+              { value: "natural", label: "Natural" },
             ] as { value: typeof searchMode; label: string }[]).map((opt) => (
               <button
                 type="button"
@@ -648,7 +648,7 @@ export function Visualizer() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder={searchMode === "project" ? "Project a query..." : "Search and visualize..."}
+            placeholder={searchMode === "project" ? "Embed a query into vector space..." : "Search and visualize..."}
             aria-label="Visualizer query"
             className="text-xs px-3 py-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-accent) w-48"
           />
@@ -658,7 +658,7 @@ export function Visualizer() {
             disabled={projecting || !query.trim()}
             className="text-xs px-3 py-1.5 rounded-(--radius-sm) bg-(--color-accent) text-(--color-text-inverse) hover:bg-(--color-accent-hover) transition-colors disabled:opacity-40 cursor-pointer"
           >
-            {projecting ? "..." : searchMode === "project" ? "Project" : "Search"}
+            {projecting ? "..." : searchMode === "project" ? "Embed" : "Search"}
           </button>
         </div>
       </div>
@@ -714,41 +714,6 @@ export function Visualizer() {
         </div>
       </div>
 
-      {/* Search active bar */}
-      {(searchResults || projecting) && (
-        <div className="px-4 py-1.5 border-b border-[#00838f]/30 bg-[#00838f]/10 flex-shrink-0 flex items-center gap-3">
-          <span className="text-[11px] text-[#22d3ee] font-medium">
-            {projecting
-              ? "Searching..."
-              : `${searchResults?.results.length ?? 0} results for "${query}" (${searchMode})`}
-          </span>
-          {searchResults && (
-            <>
-              <button
-                type="button"
-                title={filterMode === "show" ? "Show only results" : "Show all points"}
-                onClick={() => setFilterMode((v) => v === "show" ? "hide" : "show")}
-                className={`text-[10px] px-2 py-0.5 rounded transition-colors cursor-pointer border ${
-                  filterMode === "show"
-                    ? "border-(--color-border) text-(--color-text-secondary) hover:text-(--color-text)"
-                    : "border-[#22d3ee]/50 text-[#22d3ee] bg-[#22d3ee]/10"
-                }`}
-              >
-                {filterMode === "show" ? "Results only" : "Show all"}
-              </button>
-              <div className="flex-1" />
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="text-[10px] text-(--color-text-tertiary) hover:text-(--color-text) cursor-pointer"
-              >
-                Clear search
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
       {/* Main content */}
       <div className="flex flex-1 min-h-0">
         {/* 3D plot */}
@@ -768,6 +733,49 @@ export function Visualizer() {
               <div className="text-sm text-(--color-text-secondary) bg-(--color-surface)/90 backdrop-blur-sm px-4 py-2 rounded-(--radius-md)">
                 Searching...
               </div>
+            </div>
+          )}
+          {/* Filter toggle — bottom-left corner */}
+          {filteredIds && (
+            <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 bg-(--color-surface)/95 backdrop-blur-sm rounded-(--radius-sm) border border-(--color-border) px-2 py-1.5 shadow-sm">
+              <div className="flex items-center gap-0.5 bg-(--color-bg-secondary) rounded p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("show")}
+                  className={`text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                    filterMode === "show"
+                      ? "bg-(--color-accent) text-(--color-text-inverse)"
+                      : "text-(--color-text-secondary) hover:text-(--color-text)"
+                  }`}
+                >
+                  Show all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("hide")}
+                  className={`text-[10px] px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                    filterMode === "hide"
+                      ? "bg-(--color-accent) text-(--color-text-inverse)"
+                      : "text-(--color-text-secondary) hover:text-(--color-text)"
+                  }`}
+                >
+                  Filter only
+                </button>
+              </div>
+              <span className="text-[10px] text-(--color-text-tertiary)">
+                {searchResults
+                  ? `${filteredIds.size} results`
+                  : activeFilter ?? ""}
+              </span>
+              {searchResults && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="text-[10px] text-(--color-text-tertiary) hover:text-(--color-text) cursor-pointer ml-1"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           )}
           {!loading && !error && points.length > 0 && (
