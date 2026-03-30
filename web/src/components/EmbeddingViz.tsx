@@ -142,28 +142,26 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, fil
   }, [focusPoint, dataExtents]);
 
   const { traces } = useMemo(() => {
-    const hasFilter = filteredIds != null && filteredIds.size > 0;
+    // filterMode "show" = ignore filter, everything visible
+    // filterMode "hide" = apply filter, only matching points visible
+    const applyFilter = filterMode === "hide" && filteredIds != null && filteredIds.size > 0;
     const hasNeighbors = neighborIds != null && neighborIds.size > 0;
 
     const bright: VizPoint[] = [];
-    const dimmed: VizPoint[] = [];
     const neighbors: VizPoint[] = [];
 
     for (const p of points) {
       // Neighbors always visible regardless of filter
       if (hasNeighbors && neighborIds.has(p.id)) {
         neighbors.push(p);
-      } else if (!hasFilter) {
-        // No filter — everything bright
+      } else if (!applyFilter) {
+        // No active filter or "show all" — everything bright
         bright.push(p);
-      } else if (filteredIds.has(p.id)) {
+      } else if (filteredIds!.has(p.id)) {
         // Matches filter — bright
         bright.push(p);
-      } else if (filterMode === "show") {
-        // Doesn't match but "show all" — dimmed
-        dimmed.push(p);
       }
-      // filterMode === "hide" and doesn't match — skip (not rendered)
+      // applyFilter && doesn't match — skip (not rendered)
     }
 
     // Group bright points by dominant emotion
@@ -198,26 +196,6 @@ export function EmbeddingViz({ points, onSelect, selectedId, projectedPoint, fil
         },
       } as Plotly.Data;
     });
-
-    // Dimmed trace
-    if (dimmed.length > 0) {
-      traces.push({
-        type: "scatter3d" as const,
-        mode: "markers" as const,
-        name: "dimmed",
-        x: dimmed.map((p) => p.x),
-        y: dimmed.map((p) => p.y),
-        z: dimmed.map((p) => p.z),
-        text: dimmed.map(() => ""),
-        customdata: dimmed.map((p) => p.id),
-        hoverinfo: "skip" as any,
-        marker: {
-          size: 3,
-          color: "#555555",
-          opacity: 0.08,
-        },
-      } as Plotly.Data);
-    }
 
     // Neighbor highlights — medium size, colored ring matching their emotion
     if (neighbors.length > 0) {

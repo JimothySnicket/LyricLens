@@ -438,7 +438,7 @@ export function Visualizer() {
   const [projection, setProjection] = useState<ProjectionResult | null>(null);
   const [searchMode, setSearchMode] = useState<ComparisonMode | "project">("project");
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
-  const [filterMode, setFilterMode] = useState<"show" | "hide">("show");
+  const [filterMode, setFilterMode] = useState<"show" | "hide">("hide");
 
   const legendItems = useLegendItems(points, lens, genreDrillDown);
 
@@ -589,7 +589,7 @@ export function Visualizer() {
   }
 
   return (
-    <div className="flex flex-col h-screen pt-[56px]">
+    <div className="flex flex-col h-screen pt-[57px]">
       {/* Row 1: Lens selector + query */}
       <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
