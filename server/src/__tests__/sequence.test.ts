@@ -94,3 +94,23 @@ describe("longestSequence", () => {
     expect(result.phrase).toBe("baby");
   });
 });
+
+import { songKey } from "../search/utils";
+
+describe("songKey", () => {
+  test("produces consistent key from title + artist", () => {
+    expect(songKey("Hey! Baby", "Bruce Channel"))
+      .toBe("hey! baby::bruce channel");
+  });
+
+  test("trims whitespace", () => {
+    expect(songKey("  Love Song  ", "  Artist  "))
+      .toBe("love song::artist");
+  });
+
+  test("identical songs produce identical keys", () => {
+    const a = songKey("Take Good Care Of My Baby", "Bobby Vee");
+    const b = songKey("Take Good Care Of My Baby", "Bobby Vee");
+    expect(a).toBe(b);
+  });
+});

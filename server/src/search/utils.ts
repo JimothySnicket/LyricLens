@@ -1,10 +1,17 @@
 import type { Song, SearchMode, ParsedQuery } from "../lib/types";
 
+/** Stable identity for dedup — both keyword (slug IDs) and semantic (Qdrant int IDs) have title + artist. */
+export function songKey(title: string, artist: string): string {
+  return `${title.toLowerCase().trim()}::${artist.toLowerCase().trim()}`;
+}
+
 export function payloadToSong(id: any, payload: any): Song {
+  const title = payload.title ?? "";
+  const artist = payload.artist ?? "";
   return {
-    id: String(id),
-    title: payload.title ?? "",
-    artist: payload.artist ?? "",
+    id: songKey(title, artist),
+    title,
+    artist,
     year: payload.year ?? 0,
     decade: payload.decade ?? 0,
     genre: payload.genre ?? "",
