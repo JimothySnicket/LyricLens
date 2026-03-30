@@ -1,7 +1,7 @@
 import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
 import { embedQuery } from "../lib/embedder";
 import { payloadToSong } from "./utils";
-import type { ParsedQuery, SearchResult } from "../lib/types";
+import type { ParsedQuery, SearchResult, ScoreComponent } from "../lib/types";
 
 // ---------------------------------------------------------------------------
 // Build Qdrant filter from parsed query filters
@@ -69,41 +69,79 @@ export async function semanticSearch(
     }),
   ]);
 
-  // Merge by song ID — keep whichever score is higher
-  const merged = new Map<string, SearchResult>();
+  // Merge by song ID — track both scores for breakdown
+  const merged = new Map<string, {
+    result: SearchResult;
+    lyricsScore: number;
+    summaryScore: number;
+  }>();
 
   for (const point of lyricsResponse.points) {
     const song = payloadToSong(point.id, point.payload);
+    const lScore = point.score ?? 0;
     merged.set(song.id, {
-      song,
-      score: point.score ?? 0,
-      matchReason: `lyrics: ${(point.score ?? 0).toFixed(3)}`,
-      mode: "semantic" as const,
+      result: {
+        song,
+        score: lScore,
+        matchReason: `lyrics: ${lScore.toFixed(3)}`,
+        scoreBreakdown: [],
+        mode: "semantic" as const,
+      },
+      lyricsScore: lScore,
+      summaryScore: 0,
     });
   }
 
   for (const point of summaryResponse.points) {
     const song = payloadToSong(point.id, point.payload);
-    const score = point.score ?? 0;
+    const sScore = point.score ?? 0;
     const existing = merged.get(song.id);
-    if (!existing || score > existing.score) {
+    if (existing) {
+      existing.summaryScore = sScore;
+      if (sScore > existing.result.score) {
+        existing.result.score = sScore;
+        existing.result.song = song;
+      }
+    } else {
       merged.set(song.id, {
-        song,
-        score,
-        matchReason: existing
-          ? `lyrics: ${existing.score.toFixed(3)} · summary: ${score.toFixed(3)}`
-          : `summary: ${score.toFixed(3)}`,
-        mode: "semantic" as const,
+        result: {
+          song,
+          score: sScore,
+          matchReason: `summary: ${sScore.toFixed(3)}`,
+          scoreBreakdown: [],
+          mode: "semantic" as const,
+        },
+        lyricsScore: 0,
+        summaryScore: sScore,
       });
-    } else if (existing) {
-      // Song found in both — note it in the reason
-      existing.matchReason = `lyrics: ${existing.score.toFixed(3)} · summary: ${score.toFixed(3)}`;
     }
+  }
+
+  // Build matchReason and scoreBreakdown
+  for (const entry of merged.values()) {
+    const { lyricsScore, summaryScore } = entry;
+    const parts: string[] = [];
+    const breakdown: ScoreComponent[] = [];
+
+    if (lyricsScore > 0) {
+      parts.push(`lyrics: ${lyricsScore.toFixed(3)}`);
+      breakdown.push({ label: "Lyrics similarity", value: `${(lyricsScore * 100).toFixed(1)}%` });
+    }
+    if (summaryScore > 0) {
+      parts.push(`summary: ${summaryScore.toFixed(3)}`);
+      breakdown.push({ label: "Summary similarity", value: `${(summaryScore * 100).toFixed(1)}%` });
+    }
+    const best = Math.max(lyricsScore, summaryScore);
+    breakdown.push({ label: "Best match", value: `${(best * 100).toFixed(1)}%` });
+
+    entry.result.matchReason = parts.join(" · ");
+    entry.result.scoreBreakdown = breakdown;
   }
 
   const qdrantMs = Math.round(performance.now() - t1);
 
   const results = [...merged.values()]
+    .map((e) => e.result)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
