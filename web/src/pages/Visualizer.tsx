@@ -591,7 +591,7 @@ export function Visualizer() {
   return (
     <div className="flex flex-col h-screen pt-[57px]">
       {/* Row 1: Lens selector + query */}
-      <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3">
+      <div className="px-4 py-2 border-b border-(--color-border) bg-(--color-surface) flex-shrink-0 flex items-center justify-between gap-3 overflow-x-auto">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-(--color-bg-secondary) rounded-(--radius-sm) p-0.5">
             {LENS_OPTIONS.map((opt) => (
@@ -650,7 +650,7 @@ export function Visualizer() {
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder={searchMode === "project" ? "Embed a query into vector space..." : "Search and visualize..."}
             aria-label="Visualizer query"
-            className="text-xs px-3 py-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-accent) w-48"
+            className="text-xs px-3 py-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg) text-(--color-text) placeholder:text-(--color-text-tertiary) focus:outline-none focus:border-(--color-accent) w-64 min-w-0"
           />
           <button
             type="button"
