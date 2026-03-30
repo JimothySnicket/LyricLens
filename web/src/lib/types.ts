@@ -14,10 +14,17 @@ export interface Song {
   emotions: Record<string, number>;
 }
 
+export interface ScoreComponent {
+  label: string;
+  detail?: string;
+  value: string;
+}
+
 export interface SearchResult {
   song: Song;
   score: number;
   matchReason: string;
+  scoreBreakdown: ScoreComponent[];
   mode: SearchMode;
 }
 
