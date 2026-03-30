@@ -1,5 +1,5 @@
 import { longestSequence } from "./utils";
-import type { Song, ParsedQuery, SearchResult } from "../lib/types";
+import type { Song, ParsedQuery, SearchResult, ScoreComponent } from "../lib/types";
 
 const TITLE_WEIGHT = 2;
 const LYRICS_WEIGHT = 1.5;
@@ -120,10 +120,50 @@ export function keywordSearch(
       }
     }
 
+    const breakdown: ScoreComponent[] = [];
+    if (titleMatch.length > 0) {
+      breakdown.push({
+        label: "Title match",
+        detail: `"${titleMatch.phrase}" (${titleMatch.length}-word)`,
+        value: `${(titleMatch.length ** 2 * TITLE_WEIGHT).toFixed(1)} pts`,
+      });
+    }
+    if (lyricsMatch.length > 0) {
+      breakdown.push({
+        label: "Lyrics match",
+        detail: `"${lyricsMatch.phrase}" (${lyricsMatch.length}-word)`,
+        value: `${(lyricsMatch.length ** 2 * LYRICS_WEIGHT).toFixed(1)} pts`,
+      });
+    }
+    if (artistMatch.length > 0) {
+      breakdown.push({
+        label: "Artist match",
+        detail: `"${artistMatch.phrase}" (${artistMatch.length}-word)`,
+        value: `${(artistMatch.length ** 2 * ARTIST_WEIGHT).toFixed(1)} pts`,
+      });
+    }
+    if (artistHint.length > 0) {
+      const lowerArtist = song.artist.toLowerCase();
+      if (artistHint.every((token) => lowerArtist.includes(token))) {
+        breakdown.push({ label: "Artist bonus", value: `+${ARTIST_HINT_BONUS} pts` });
+      }
+    }
+    if (decades.length > 0 && decades.includes(song.decade)) {
+      breakdown.push({ label: "Decade bonus", detail: `${song.decade}s`, value: `+${DECADE_BONUS} pts` });
+    }
+    if (genres.length > 0) {
+      const songGenre = song.genre.toLowerCase();
+      if (genres.some((g) => songGenre.includes(g.toLowerCase()))) {
+        breakdown.push({ label: "Genre bonus", detail: song.genre, value: `+${GENRE_BONUS} pts` });
+      }
+    }
+    breakdown.push({ label: "Total", value: `${score.toFixed(1)} pts` });
+
     results.push({
       song,
       score,
       matchReason: reasons.join(" · ") || "match",
+      scoreBreakdown: breakdown,
       mode: "keyword",
     });
   }
