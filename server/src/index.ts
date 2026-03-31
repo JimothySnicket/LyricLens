@@ -41,7 +41,9 @@ app.route("/api/rag", ragRoutes);
 const staticRoot = resolve(import.meta.dir, "../../web/dist");
 if (existsSync(staticRoot)) {
   app.use("/*", serveStatic({ root: staticRoot }));
-  app.get("/*", serveStatic({ path: resolve(staticRoot, "index.html") }));
+  // SPA fallback — serve index.html for any non-API, non-file route
+  const indexHtml = readFileSync(resolve(staticRoot, "index.html"), "utf-8");
+  app.get("/*", (c) => c.html(indexHtml));
 }
 
 const port = parseInt(process.env.PORT || "5201", 10);

@@ -13,6 +13,9 @@ COPY server/ server/
 COPY web/ web/
 RUN cd web && bun run build
 
+# Pre-download the embedding model so it's baked into the image
+RUN cd server && bun -e "const{pipeline}=require('@huggingface/transformers');await pipeline('feature-extraction','nomic-ai/nomic-embed-text-v1.5',{dtype:'fp32'})"
+
 # ---- Runtime stage ----
 FROM oven/bun:1-slim
 WORKDIR /app

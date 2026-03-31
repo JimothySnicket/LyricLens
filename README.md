@@ -2,7 +2,7 @@
 
 Compare keyword, semantic, hybrid, and LLM-powered search across 2,742 Billboard hits. A hands-on demonstration of RAG retrieval tradeoffs — where each approach wins, where it breaks, and why.
 
-<!-- **[Live demo →](https://lyriclens.example.com)** -->
+**[Live demo →](https://lyric-lens-567745482176.europe-west2.run.app)**
 
 ![LyricLens landing page](screenshots/landing.png)
 

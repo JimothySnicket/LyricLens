@@ -1,15 +1,22 @@
 import { pipeline, layer_norm, Tensor } from "@huggingface/transformers";
 
 let embedder: any = null;
+let embedderReady: Promise<any> | null = null;
 
 export async function getEmbedder() {
   if (!embedder) {
-    embedder = await pipeline("feature-extraction", "nomic-ai/nomic-embed-text-v1.5", {
-      dtype: "fp32",
-    });
+    if (!embedderReady) {
+      embedderReady = pipeline("feature-extraction", "nomic-ai/nomic-embed-text-v1.5", {
+        dtype: "fp32",
+      }).then((e) => { embedder = e; return e; });
+    }
+    return embedderReady;
   }
   return embedder;
 }
+
+// Eagerly warm the model at import time (non-blocking)
+getEmbedder().then(() => console.log("Embedding model loaded")).catch(console.error);
 
 export async function embedQuery(text: string): Promise<number[]> {
   const embed = await getEmbedder();

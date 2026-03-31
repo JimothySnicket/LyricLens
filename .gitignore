@@ -4,7 +4,9 @@ dist/
 
 # Data
 data/raw/
-data/processed/
+data/processed/*
+!data/processed/merged_songs.json
+!data/processed/umap_coords.json
 *.npz
 *.csv
 
