@@ -3,13 +3,13 @@ steps:
     args:
       - build
       - -t
-      - europe-west2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lyric-lens:$COMMIT_SHA
+      - europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lyric-lens:$COMMIT_SHA
       - .
 
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - europe-west2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lyric-lens:$COMMIT_SHA
+      - europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lyric-lens:$COMMIT_SHA
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -17,8 +17,8 @@ steps:
       - run
       - deploy
       - lyric-lens
-      - --image=europe-west2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lyric-lens:$COMMIT_SHA
-      - --region=europe-west2
+      - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/lyric-lens:$COMMIT_SHA
+      - --region=europe-west1
       - --memory=4Gi
       - --cpu=2
       - --min-instances=1
