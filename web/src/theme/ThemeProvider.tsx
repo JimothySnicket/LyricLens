@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+type Theme = "dark" | "dark";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -8,14 +8,14 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "light",
+  theme: "dark",
   toggle: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    return (localStorage.getItem("lyriclens-theme") as Theme) || "light";
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("lyriclens-theme") as Theme) || "dark";
   });
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("lyriclens-theme", theme);
   }, [theme]);
 
-  const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  const toggle = () => setTheme((t) => (t === "dark" ? "dark" : "dark"));
 
   return (
     <ThemeContext value={{ theme, toggle }}>
