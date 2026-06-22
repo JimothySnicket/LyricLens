@@ -31,9 +31,12 @@ COPY --from=build /app/server/package.json server/
 # Copy built frontend
 COPY --from=build /app/web/dist web/dist/
 
-# Copy data files
+# Copy data files (songs, UMAP coords, and the baked embedding matrices for
+# in-memory vector search — no external vector DB)
 COPY data/processed/merged_songs.json data/processed/merged_songs.json
 COPY data/processed/umap_coords.json data/processed/umap_coords.json
+COPY data/processed/lyrics_embeddings.f32 data/processed/lyrics_embeddings.f32
+COPY data/processed/summary_embeddings.f32 data/processed/summary_embeddings.f32
 
 EXPOSE 8080
 ENV PORT=8080

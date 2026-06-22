@@ -81,7 +81,7 @@ function IntroSection({ onSkipToSearch }: { onSkipToSearch: () => void }) {
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 mt-10 mb-12">
-        {["React", "TypeScript", "Bun", "Hono", "Qdrant", "Python", "Remotion", "Tailwind"].map(
+        {["React", "TypeScript", "Bun", "Hono", "Transformers.js", "Python", "Remotion", "Tailwind"].map(
           (item) => (
             <span
               key={item}

@@ -1,44 +1,42 @@
-import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
+import { vectorSearch } from "../lib/vector-store";
 import { embedQuery } from "../lib/embedder";
-import { payloadToSong } from "./utils";
-import type { ParsedQuery, SearchResult, ScoreComponent } from "../lib/types";
+import type { ParsedQuery, SearchResult, ScoreComponent, Song } from "../lib/types";
 
 // ---------------------------------------------------------------------------
-// Build Qdrant filter from parsed query filters
+// Build an in-memory candidate predicate from parsed query filters.
+// (Replaces the old Qdrant payload filter — same intent: artist / title scope.)
 // ---------------------------------------------------------------------------
-function buildQdrantFilter(parsed: ParsedQuery): Record<string, any> | undefined {
+function buildPredicate(parsed: ParsedQuery): ((song: Song, index: number) => boolean) | undefined {
   const { artistHint } = parsed.filters;
-  const must: any[] = [];
+  const conds: Array<(s: Song) => boolean> = [];
 
   // Artist filter — explicit user intent ("by Artist")
-  if (artistHint.length > 0) {
-    for (const token of artistHint) {
-      must.push({ key: "artist", match: { text: token } });
-    }
+  for (const token of artistHint) {
+    const t = token.toLowerCase();
+    conds.push((s) => s.artist.toLowerCase().includes(t));
   }
 
   // Title scope — explicit user intent ("in the title")
   if (parsed.scopeTitle && parsed.terms.length > 0) {
     for (const term of parsed.terms) {
-      must.push({ key: "title", match: { text: term } });
+      const t = term.toLowerCase();
+      conds.push((s) => s.title.toLowerCase().includes(t));
     }
   }
 
-  if (must.length === 0) return undefined;
-  return { must };
+  if (conds.length === 0) return undefined;
+  return (s) => conds.every((c) => c(s));
 }
 
 // ---------------------------------------------------------------------------
-// Semantic search
+// Semantic search — in-memory cosine over baked lyrics + summary vectors
 // ---------------------------------------------------------------------------
 export async function semanticSearch(
   parsed: ParsedQuery,
   originalQuery: string,
   limit = 20,
-): Promise<{ results: SearchResult[]; totalFiltered: number; timing?: { embedMs: number; qdrantMs: number } }> {
-  const client = getQdrantClient();
-
-  const filter = buildQdrantFilter(parsed);
+): Promise<{ results: SearchResult[]; totalFiltered: number; timing?: { embedMs: number; searchMs: number } }> {
+  const predicate = buildPredicate(parsed);
 
   const queryText = originalQuery || parsed.semanticText;
 
@@ -50,24 +48,10 @@ export async function semanticSearch(
   const vector = await embedQuery(queryText);
   const embedMs = Math.round(performance.now() - t0);
 
-  // Query both vectors in parallel
+  // Search both vector spaces
   const t1 = performance.now();
-  const [lyricsResponse, summaryResponse] = await Promise.all([
-    client.query(COLLECTION_NAME, {
-      query: vector,
-      using: "lyrics",
-      filter,
-      limit,
-      with_payload: true,
-    }),
-    client.query(COLLECTION_NAME, {
-      query: vector,
-      using: "summary",
-      filter,
-      limit,
-      with_payload: true,
-    }),
-  ]);
+  const lyricsHits = vectorSearch(vector, "lyrics", limit, predicate);
+  const summaryHits = vectorSearch(vector, "summary", limit, predicate);
 
   // Merge by song ID — track both scores for breakdown
   const merged = new Map<string, {
@@ -76,12 +60,11 @@ export async function semanticSearch(
     summaryScore: number;
   }>();
 
-  for (const point of lyricsResponse.points) {
-    const song = payloadToSong(point.id, point.payload);
-    const lScore = point.score ?? 0;
-    merged.set(song.id, {
+  for (const hit of lyricsHits) {
+    const lScore = hit.score;
+    merged.set(hit.song.id, {
       result: {
-        song,
+        song: hit.song,
         score: lScore,
         matchReason: `lyrics: ${lScore.toFixed(3)}`,
         scoreBreakdown: [],
@@ -92,20 +75,19 @@ export async function semanticSearch(
     });
   }
 
-  for (const point of summaryResponse.points) {
-    const song = payloadToSong(point.id, point.payload);
-    const sScore = point.score ?? 0;
-    const existing = merged.get(song.id);
+  for (const hit of summaryHits) {
+    const sScore = hit.score;
+    const existing = merged.get(hit.song.id);
     if (existing) {
       existing.summaryScore = sScore;
       if (sScore > existing.result.score) {
         existing.result.score = sScore;
-        existing.result.song = song;
+        existing.result.song = hit.song;
       }
     } else {
-      merged.set(song.id, {
+      merged.set(hit.song.id, {
         result: {
-          song,
+          song: hit.song,
           score: sScore,
           matchReason: `summary: ${sScore.toFixed(3)}`,
           scoreBreakdown: [],
@@ -138,12 +120,12 @@ export async function semanticSearch(
     entry.result.scoreBreakdown = breakdown;
   }
 
-  const qdrantMs = Math.round(performance.now() - t1);
+  const searchMs = Math.round(performance.now() - t1);
 
   const results = [...merged.values()]
     .map((e) => e.result)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  return { results, totalFiltered: 2742, timing: { embedMs, qdrantMs } };
+  return { results, totalFiltered: 2742, timing: { embedMs, searchMs } };
 }

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { embedQuery } from "../lib/embedder";
-import { getQdrantClient, COLLECTION_NAME } from "../lib/qdrant";
+import { vectorSearch } from "../lib/vector-store";
 import { checkGeneralRateLimit, sanitizeInput } from "../lib/deepseek";
 
 const vizRoutes = new Hono();
@@ -36,16 +36,10 @@ vizRoutes.post("/project", async (c) => {
   // 1. Embed the query
   const vector = await embedQuery(clean);
 
-  // 2. Find 5 nearest songs in Qdrant (using lyrics vector)
-  const client = getQdrantClient();
-  const results = await client.query(COLLECTION_NAME, {
-    query: vector,
-    using: "lyrics",
-    limit: 5,
-    with_payload: true,
-  });
+  // 2. Find 5 nearest songs in-memory (using lyrics vector)
+  const hits = vectorSearch(vector, "lyrics", 5);
 
-  // 3. Look up their UMAP coords from viz cache (match by title+artist since Qdrant has no slug)
+  // 3. Look up their UMAP coords from viz cache (match by title+artist)
   const vizData = getVizCache();
   const vizByTitleArtist = new Map(
     vizData.map((p: any) => [`${p.title}|||${p.artist}`, p])
@@ -55,10 +49,10 @@ vizRoutes.post("/project", async (c) => {
   let px = 0, py = 0, pz = 0;
   const nearestSongs: { id: string; title: string; artist: string; sim: number }[] = [];
 
-  for (const hit of results.points) {
+  for (const hit of hits) {
     const sim = hit.score ?? 0;
-    const title = (hit.payload?.title as string) ?? "";
-    const artist = (hit.payload?.artist as string) ?? "";
+    const title = hit.song.title;
+    const artist = hit.song.artist;
     const vizPoint = vizByTitleArtist.get(`${title}|||${artist}`);
     if (!vizPoint) continue;
 

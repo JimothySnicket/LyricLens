@@ -1,5 +1,6 @@
 node_modules/
 dist/
+*.tsbuildinfo
 .env
 
 # Data
@@ -7,6 +8,10 @@ data/raw/
 data/processed/*
 !data/processed/merged_songs.json
 !data/processed/umap_coords.json
+# Baked embedding matrices — committed so the image is self-contained and a
+# rebuild never depends on an external vector DB. Regen: bun scripts/build-embeddings.ts
+!data/processed/lyrics_embeddings.f32
+!data/processed/summary_embeddings.f32
 *.npz
 *.csv
 

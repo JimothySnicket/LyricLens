@@ -357,10 +357,10 @@ export function DeepDive() {
               and neutral.
             </p>
             <p>
-              With summaries and emotions layered onto the base data, Qdrant
-              stores two separate vector spaces per song: one embedding of the
-              lyrics and one of the summary. When semantic search runs, it
-              queries both and keeps whichever scores higher. "Songs that sound
+              With summaries and emotions layered onto the base data, the app
+              holds two separate vector spaces per song in memory: one embedding
+              of the lyrics and one of the summary. When semantic search runs, it
+              scores both and keeps whichever scores higher. "Songs that sound
               like a train" can now match against the summary's description of
               rhythm and energy rather than being limited to the literal text.
             </p>
@@ -707,8 +707,8 @@ export function DeepDive() {
               </div>
               <p className="text-sm text-(--color-text-secondary)">
                 Bun runtime, Hono framework, Transformers.js with ONNX
-                (nomic-embed-text-v1.5, 768-dim, fp32), Qdrant Cloud, Compromise
-                for NLP and entity extraction.
+                (nomic-embed-text-v1.5, 768-dim, fp32), in-memory vector search,
+                Compromise for NLP and entity extraction.
               </p>
             </div>
 
@@ -717,9 +717,10 @@ export function DeepDive() {
                 Pipeline
               </div>
               <p className="text-sm text-(--color-text-secondary)">
-                Python, sentence-transformers, qdrant-client, scikit-learn for
-                KMeans clustering, UMAP for dimensionality reduction, pandas and
-                numpy.
+                Python with scikit-learn for KMeans clustering, UMAP for
+                dimensionality reduction, pandas and numpy. Embeddings are built
+                with the same Transformers.js embedder the server uses at query
+                time, then baked into the deployment.
               </p>
             </div>
 
@@ -740,7 +741,7 @@ export function DeepDive() {
             <SpecRow label="Dimensions" value="768" />
             <SpecRow label="Context window" value="8,192 tokens" />
             <SpecRow label="Precision" value="fp32 (~300 MB)" />
-            <SpecRow label="Vector database" value="Qdrant Cloud" />
+            <SpecRow label="Vector search" value="In-memory cosine (2,742 × 768D, flat)" />
             <SpecRow label="Vector spaces" value="Lyrics + Summary (cosine)" />
             <SpecRow label="Clustering" value="KMeans (k=10)" />
             <SpecRow
@@ -752,7 +753,9 @@ export function DeepDive() {
           <Prose>
             <p className="mt-8">
               The total external cost of running this application is effectively
-              the Qdrant Cloud free tier and DeepSeek queries that round to zero.
+              just DeepSeek queries that round to zero. At 2,742 songs the
+              embeddings are small enough to bake into the deployment and search
+              in memory — no vector database, nothing external to keep alive.
               Everything else runs locally or is bundled with the deployment.
             </p>
           </Prose>

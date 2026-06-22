@@ -50,7 +50,7 @@ function getPipelineSteps(response: SearchResponse): string[] {
     );
     if (filterParts.length > 0) {
       steps.push(
-        `Qdrant payload filters narrowed the vector search to matching songs before similarity ranking.`
+        `Payload filters narrowed the candidate set to matching songs before similarity ranking.`
       );
     }
     if (parsedQuery.semanticText) {
